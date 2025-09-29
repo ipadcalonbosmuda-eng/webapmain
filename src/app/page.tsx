@@ -92,7 +92,7 @@ export default function HomePage() {
                 <p className="text-gray-600 group-hover:text-gray-700 transition-colors">
                   {tool.description}
                 </p>
-                <div className="mt-4 flex items-center text-[#00FF85] font-medium group-hover:translate-x-1 transition-transform">
+                <div className="mt-4 flex items-center text-blue-600 font-medium group-hover:text-blue-800 group-hover:translate-x-1 transition-all">
                   Use Tool
                   <ArrowRight className="ml-1 h-4 w-4" />
                 </div>
