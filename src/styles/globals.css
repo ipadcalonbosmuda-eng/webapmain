@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #00FF85;
+  --primary-foreground: #000000;
+  --background: #ffffff;
+  --foreground: #000000;
+  --muted: #f5f5f5;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --input: #ffffff;
+  --ring: #00FF85;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-[#00FF85] hover:bg-[#00E677] text-black font-medium px-4 py-2 rounded-lg transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-gray-900 font-medium px-4 py-2 rounded-lg border border-gray-300 transition-colors;
+  }
+  
+  .card {
+    @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+  }
+  
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00FF85] focus:border-transparent;
+  }
+}
