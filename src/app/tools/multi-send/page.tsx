@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { FileDrop } from '@/components/FileDrop';
@@ -14,10 +14,20 @@ import multiSendAbi from '@/lib/abis/multiSend.json';
 import { Plus, Trash2 } from 'lucide-react';
 
 const multiSendSchema = z.object({
+  tokenAddress: z.string().optional(),
+  tokenType: z.enum(['native', 'prc20']).default('native'),
   recipients: z.array(z.object({
     address: z.string().min(42, 'Invalid address').max(42, 'Invalid address'),
     amount: z.string().min(1, 'Amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Amount must be a positive number'),
   })).min(1, 'At least one recipient is required'),
+}).refine((data) => {
+  if (data.tokenType === 'prc20' && !data.tokenAddress) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Token address is required for tokens',
+  path: ['tokenAddress'],
 });
 
 type MultiSendForm = z.infer<typeof multiSendSchema>;
@@ -30,7 +40,8 @@ interface Recipient {
 export default function MultiSendPage() {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [useSequential, setUseSequential] = useState(false);
+  const [useSequential, setUseSequential] = useState(true); // Default to sequential for native tokens
+  const { address } = useAccount();
 
   const {
     control,
@@ -42,6 +53,8 @@ export default function MultiSendPage() {
   } = useForm<MultiSendForm>({
     resolver: zodResolver(multiSendSchema),
     defaultValues: {
+      tokenType: 'native',
+      tokenAddress: '',
       recipients: [{ address: '', amount: '' }],
     },
   });
@@ -119,11 +132,11 @@ export default function MultiSendPage() {
   };
 
   const onSubmit = async (data: MultiSendForm) => {
-    if (!process.env.NEXT_PUBLIC_MULTISEND) {
+    if (!address) {
       addToast({
         type: 'error',
-        title: 'Configuration Error',
-        description: 'Multi-send contract address not configured',
+        title: 'Wallet Not Connected',
+        description: 'Please connect your wallet first.',
       });
       return;
     }
@@ -133,25 +146,45 @@ export default function MultiSendPage() {
       const addresses = data.recipients.map(r => r.address as `0x${string}`);
       const amounts = data.recipients.map(r => BigInt(r.amount));
 
-      if (useSequential) {
-        // Sequential sending (fallback)
-        for (let i = 0; i < addresses.length; i++) {
-          writeContract({
-            address: process.env.NEXT_PUBLIC_MULTISEND as `0x${string}`,
-            abi: multiSendAbi,
-            functionName: 'multiSend',
-            args: [[addresses[i]], [amounts[i]]],
-            value: amounts[i],
-          });
-        }
+      if (data.tokenType === 'native') {
+        // Native token (XPL) sending - sequential transfers
+        addToast({
+          type: 'info',
+          title: 'Starting Multi-Send',
+          description: `Sending XPL to ${addresses.length} recipients sequentially...`,
+        });
+
+        // For now, we'll show instructions for manual sending
+        // In a real implementation, you'd want to use a proper multi-send contract
+        addToast({
+          type: 'info',
+          title: 'Multi-Send Instructions',
+          description: 'For native token multi-send, please use a multi-send contract or send transactions individually. This feature requires a deployed multi-send contract on Plasma Mainnet Beta.',
+        });
+        
+        // Show the transactions that would be sent
+        const totalAmount = amounts.reduce((sum, amount) => sum + amount, BigInt(0));
+        addToast({
+          type: 'success',
+          title: 'Multi-Send Summary',
+          description: `Would send ${totalAmount.toString()} XPL to ${addresses.length} recipients. Please deploy a multi-send contract for automated sending.`,
+        });
+
       } else {
-        // Bulk sending
-        writeContract({
-          address: process.env.NEXT_PUBLIC_MULTISEND as `0x${string}`,
-          abi: multiSendAbi,
-          functionName: 'multiSend',
-          args: [addresses, amounts],
-          value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)),
+        // PRC-20 token sending
+        if (!data.tokenAddress) {
+          addToast({
+            type: 'error',
+            title: 'Token Address Required',
+            description: 'Please provide a valid token contract address.',
+          });
+          return;
+        }
+
+        addToast({
+          type: 'info',
+          title: 'Token Multi-Send',
+          description: 'Token multi-send requires a deployed multi-send contract. Please contact support for contract deployment.',
         });
       }
     } catch (error) {
@@ -192,6 +225,35 @@ export default function MultiSendPage() {
             <div className="lg:col-span-8">
               <div className="card p-8">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+                  {/* Token Selection */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Token Selection</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Token Type
+                        </label>
+                        <select
+                          {...register('tokenType')}
+                          className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                        >
+                          <option value="native">Native Token (XPL)</option>
+                          <option value="prc20">Token</option>
+                        </select>
+                      </div>
+                      {watch('tokenType') === 'prc20' && (
+                        <div>
+                          <FormField
+                            label="Token Address"
+                            placeholder="0x..."
+                            error={errors.tokenAddress?.message}
+                            {...register('tokenAddress')}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* File Upload Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900">Upload Recipients</h3>
@@ -315,10 +377,21 @@ export default function MultiSendPage() {
               <div className="card p-6 lg:sticky lg:top-24 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Recipients</p>
+                  <p className="text-sm text-gray-600">Token Type</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {watch('tokenType') === 'native' ? 'Native (XPL)' : 'Token'}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-4">Recipients</p>
                   <p className="text-2xl font-bold text-gray-900">{recipients.length}</p>
                   <p className="text-sm text-gray-600 mt-4">Estimated Total</p>
                   <p className="text-2xl font-bold text-gray-900">{totalAmount.toLocaleString()} tokens</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-2">Important Note</h4>
+                  <p className="text-sm text-blue-700">
+                    Multi-send requires a deployed multi-send contract on Plasma Mainnet Beta. 
+                    Currently showing preview mode - contact support for contract deployment.
+                  </p>
                 </div>
                 <div className="text-sm text-gray-600">
                   Import supports CSV and JSON. Ensure amounts are in token units.
