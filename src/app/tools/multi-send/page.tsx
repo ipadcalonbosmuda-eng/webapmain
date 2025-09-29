@@ -14,8 +14,8 @@ import multiSendAbi from '@/lib/abis/multiSend.json';
 import { Plus, Trash2 } from 'lucide-react';
 
 const multiSendSchema = z.object({
+  tokenType: z.enum(['native', 'prc20']),
   tokenAddress: z.string().optional(),
-  tokenType: z.enum(['native', 'prc20']).default('native'),
   recipients: z.array(z.object({
     address: z.string().min(42, 'Invalid address').max(42, 'Invalid address'),
     amount: z.string().min(1, 'Amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Amount must be a positive number'),
