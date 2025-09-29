@@ -196,14 +196,6 @@ export default function CreateTokenPage() {
             <div className="lg:col-span-4">
               <div className="card p-6 lg:sticky lg:top-24 space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Guidelines</h3>
-                  <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                    <li>Symbol 2–6 karakter, huruf kapital disarankan.</li>
-                    <li>Total Supply adalah jumlah token awal yang akan dicetak.</li>
-                    <li>Owner Address akan menjadi pemilik kontrak token.</li>
-                  </ul>
-                </div>
-                <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Preview</h3>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
                     <p className="text-sm text-gray-600">Name</p>
@@ -215,6 +207,14 @@ export default function CreateTokenPage() {
                     <p className="text-sm text-gray-600 mt-3">Owner</p>
                     <p className="font-mono text-gray-900 break-all">{watch('owner') || '—'}</p>
                   </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Guidelines</h3>
+                  <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                    <li>Symbol 2–6 karakter, huruf kapital disarankan.</li>
+                    <li>Total Supply adalah jumlah token awal yang akan dicetak.</li>
+                    <li>Owner Address akan menjadi pemilik kontrak token.</li>
+                  </ul>
                 </div>
               </div>
             </div>
