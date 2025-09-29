@@ -28,7 +28,9 @@ export function RequireWallet({ children }: RequireWalletProps) {
               Connect your wallet to use tools on Plasma Mainnet Beta.
             </p>
           </div>
-          <ConnectButton />
+          <div className="flex justify-center">
+            <ConnectButton />
+          </div>
         </div>
       </div>
     );
