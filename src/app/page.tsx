@@ -101,26 +101,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Network Info */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">
-            Built for Plasma Mainnet Beta
-          </h3>
-          <p className="text-gray-600 mb-6">
-            All tools are optimized for the Plasma blockchain network, providing fast transactions and low fees.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4 text-sm">
-            <div className="bg-gray-100 px-3 py-1 rounded-full">
-              <span className="font-medium">Chain ID:</span> 9745
-            </div>
-            <div className="bg-gray-100 px-3 py-1 rounded-full">
-              <span className="font-medium">Native Token:</span> XPL
-            </div>
-            <div className="bg-gray-100 px-3 py-1 rounded-full">
-              <span className="font-medium">RPC:</span> https://rpc.plasma.to
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
