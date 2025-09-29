@@ -44,7 +44,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 flex flex-col items-center justify-center min-h-[60vh]">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
             Plasmatic Tools
           </h1>

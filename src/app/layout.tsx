@@ -23,9 +23,9 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen bg-gray-50">
             <Header />
-            <div className="flex">
+            <div className="flex relative">
               <Sidebar />
-              <main className="flex-1 lg:ml-64">
+              <main className="flex-1 lg:ml-64 min-h-screen">
                 {children}
               </main>
             </div>
