@@ -5,7 +5,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
