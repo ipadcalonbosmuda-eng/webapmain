@@ -10,7 +10,7 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
-            <img src="/logo.svg" alt="Plasmatic" width={32} height={32} />
+            <img src="/logo.svg" alt="Plasmatic" className="h-14 w-auto" />
           </Link>
         </div>
         
