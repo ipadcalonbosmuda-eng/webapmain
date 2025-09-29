@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { NetworkBadge } from './NetworkBadge';
 
 export function Header() {
   return (
@@ -15,7 +14,6 @@ export function Header() {
         </div>
         
         <div className="flex items-center space-x-4">
-          <NetworkBadge />
           <ConnectButton />
         </div>
       </div>
