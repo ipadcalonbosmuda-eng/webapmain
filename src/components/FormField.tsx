@@ -20,7 +20,7 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
         <input
           ref={ref}
           className={cn(
-            'input placeholder:opacity-100 placeholder:text-gray-900',
+            'w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FF85] focus:border-[#00FF85] transition-colors placeholder:opacity-100 placeholder:text-gray-900',
             error && 'ring-2 ring-red-400 focus:ring-red-500',
             className
           )}
