@@ -275,9 +275,9 @@ export default function VestingPage() {
               <div className="card p-6 lg:sticky lg:top-24 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Guidelines</h3>
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                  <li>`Cliff` adalah penundaan sebelum vesting dimulai.</li>
-                  <li>`Duration` adalah total lama vesting berjalan.</li>
-                  <li>Pilih mode rilis sesuai kebutuhan distribusi.</li>
+                  <li>`Cliff` is the delay before vesting starts.</li>
+                  <li>`Duration` is the total length of the vesting schedule.</li>
+                  <li>Choose the release mode that fits your distribution.</li>
                 </ul>
               </div>
             </div>

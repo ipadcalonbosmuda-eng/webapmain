@@ -188,9 +188,9 @@ export default function LiquidityLockerPage() {
               <div className="card p-6 lg:sticky lg:top-24 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Checklist</h3>
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                  <li>Gunakan alamat LP token yang benar.</li>
-                  <li>Pastikan jumlah sesuai dengan token units.</li>
-                  <li>Catatan (memo) bersifat opsional.</li>
+                  <li>Use the correct LP token contract address.</li>
+                  <li>Ensure the amount is in token units.</li>
+                  <li>Memo is optional.</li>
                 </ul>
               </div>
             </div>

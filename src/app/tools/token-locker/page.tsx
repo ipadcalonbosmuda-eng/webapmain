@@ -266,9 +266,9 @@ export default function TokenLockerPage() {
               <div className="card p-6 lg:sticky lg:top-24 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Tips</h3>
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                  <li>Pastikan token Anda mendukung `approve` untuk locker.</li>
-                  <li>Gunakan tanggal `Lock Until` di masa depan.</li>
-                  <li>`Cliff` opsional untuk menunda awal vesting.</li>
+                  <li>Ensure your token supports `approve` for the locker.</li>
+                  <li>Use a future date for `Lock Until`.</li>
+                  <li>`Cliff` is optional to delay the vesting start.</li>
                 </ul>
               </div>
             </div>

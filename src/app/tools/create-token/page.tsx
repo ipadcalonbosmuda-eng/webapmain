@@ -211,9 +211,9 @@ export default function CreateTokenPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Guidelines</h3>
                   <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
-                    <li>Symbol 2–6 karakter, huruf kapital disarankan.</li>
-                    <li>Total Supply adalah jumlah token awal yang akan dicetak.</li>
-                    <li>Owner Address akan menjadi pemilik kontrak token.</li>
+                    <li>Symbol should be 2–6 characters; uppercase is recommended.</li>
+                    <li>Total Supply is the initial number of tokens to mint.</li>
+                    <li>Owner Address will become the token contract owner.</li>
                   </ul>
                 </div>
               </div>
