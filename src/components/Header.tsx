@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { NetworkBadge } from './NetworkBadge';
@@ -11,7 +10,7 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
-            <Image src="/logo.svg" alt="Plasmatic" width={32} height={32} priority />
+            <img src="/logo.svg" alt="Plasmatic" width={32} height={32} />
           </Link>
         </div>
         
