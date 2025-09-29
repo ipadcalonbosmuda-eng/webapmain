@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -83,9 +83,11 @@ export default function CreateTokenPage() {
   };
 
   // Update owner field when wallet connects
-  if (address) {
-    setValue('owner', address);
-  }
+  useEffect(() => {
+    if (address) {
+      setValue('owner', address);
+    }
+  }, [address, setValue]);
 
   if (isSuccess && hash) {
     addToast({
