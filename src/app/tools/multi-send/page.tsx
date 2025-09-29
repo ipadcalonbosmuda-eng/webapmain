@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useSendTransaction } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { FileDrop } from '@/components/FileDrop';
@@ -42,6 +42,21 @@ export default function MultiSendPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [useSequential, setUseSequential] = useState(true); // Default to sequential for native tokens
   const { address } = useAccount();
+
+  // Helper function to convert decimal amount to BigInt
+  const convertToBigInt = (amount: string, decimals: number = 18): bigint => {
+    const amountFloat = parseFloat(amount);
+    if (isNaN(amountFloat) || amountFloat < 0) {
+      throw new Error('Invalid amount');
+    }
+    const amountInWei = Math.floor(amountFloat * Math.pow(10, decimals));
+    return BigInt(amountInWei);
+  };
+  const { writeContract, isPending: isWritePending } = useWriteContract();
+  const { sendTransaction, isPending: isSendPending } = useSendTransaction();
+  const { data: hash, isPending: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({
+    hash: undefined, // Will be set dynamically
+  });
 
   const {
     control,
@@ -144,34 +159,62 @@ export default function MultiSendPage() {
     setIsLoading(true);
     try {
       const addresses = data.recipients.map(r => r.address as `0x${string}`);
-      const amounts = data.recipients.map(r => BigInt(r.amount));
+      const amounts = data.recipients.map(r => convertToBigInt(r.amount, 18));
 
       if (data.tokenType === 'native') {
-        // Native token (XPL) sending - sequential transfers
+        // Native token (XPL) sending using multi-send contract
+        const multiSendAddress = process.env.NEXT_PUBLIC_MULTISEND;
+        
+        if (!multiSendAddress) {
+          addToast({
+            type: 'error',
+            title: 'Multi-Send Contract Not Configured',
+            description: 'Multi-send contract address is not configured. Please contact support.',
+          });
+          return;
+        }
+
         addToast({
           type: 'info',
           title: 'Starting Multi-Send',
-          description: `Sending XPL to ${addresses.length} recipients sequentially...`,
+          description: `Sending XPL to ${addresses.length} recipients using multi-send contract...`,
         });
 
-        // For now, we'll show instructions for manual sending
-        // In a real implementation, you'd want to use a proper multi-send contract
-        addToast({
-          type: 'info',
-          title: 'Multi-Send Instructions',
-          description: 'For native token multi-send, please use a multi-send contract or send transactions individually. This feature requires a deployed multi-send contract on Plasma Mainnet Beta.',
-        });
-        
-        // Show the transactions that would be sent
-        const totalAmount = amounts.reduce((sum, amount) => sum + amount, BigInt(0));
-        addToast({
-          type: 'success',
-          title: 'Multi-Send Summary',
-          description: `Would send ${totalAmount.toString()} XPL to ${addresses.length} recipients. Please deploy a multi-send contract for automated sending.`,
-        });
+        try {
+          console.log('Multi-Send Debug Info:', {
+            contractAddress: multiSendAddress,
+            addresses: addresses,
+            amounts: amounts,
+            totalValue: amounts.reduce((sum, amount) => sum + amount, BigInt(0)).toString()
+          });
+
+          const txHash = await writeContract({
+            address: multiSendAddress as `0x${string}`,
+            abi: multiSendAbi,
+            functionName: 'multiSend',
+            args: [addresses, amounts],
+            value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)), // Total amount to send
+          });
+
+          console.log('Transaction Hash:', txHash);
+
+          addToast({
+            type: 'success',
+            title: 'Multi-Send Transaction Sent',
+            description: `Multi-send transaction submitted. Hash: ${txHash}`,
+          });
+
+        } catch (error) {
+          console.error('Error in multi-send:', error);
+          addToast({
+            type: 'error',
+            title: 'Multi-Send Failed',
+            description: `Failed to send multi-send transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
+        }
 
       } else {
-        // PRC-20 token sending
+        // Token (PRC-20) sending using multi-send contract
         if (!data.tokenAddress) {
           addToast({
             type: 'error',
@@ -181,11 +224,49 @@ export default function MultiSendPage() {
           return;
         }
 
+        const multiSendAddress = process.env.NEXT_PUBLIC_MULTISEND;
+        
+        if (!multiSendAddress) {
+          addToast({
+            type: 'error',
+            title: 'Multi-Send Contract Not Configured',
+            description: 'Multi-send contract address is not configured. Please contact support.',
+          });
+          return;
+        }
+
         addToast({
           type: 'info',
-          title: 'Token Multi-Send',
-          description: 'Token multi-send requires a deployed multi-send contract. Please contact support for contract deployment.',
+          title: 'Starting Token Multi-Send',
+          description: `Sending tokens to ${addresses.length} recipients using multi-send contract...`,
         });
+
+        try {
+          // For PRC-20 tokens, we'll assume 18 decimals (most common)
+          // In a real implementation, you'd want to read the token's decimals
+          const tokenAmounts = data.recipients.map(r => convertToBigInt(r.amount, 18));
+          
+          const txHash = await writeContract({
+            address: multiSendAddress as `0x${string}`,
+            abi: multiSendAbi,
+            functionName: 'multiSendToken',
+            args: [data.tokenAddress as `0x${string}`, addresses, tokenAmounts],
+          });
+
+          addToast({
+            type: 'success',
+            title: 'Token Multi-Send Transaction Sent',
+            description: `Token multi-send transaction submitted. Hash: ${txHash}`,
+          });
+
+        } catch (error) {
+          console.error('Error in token multi-send:', error);
+          addToast({
+            type: 'error',
+            title: 'Token Multi-Send Failed',
+            description: `Failed to send token multi-send transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
+        }
       }
     } catch (error) {
       console.error('Error sending tokens:', error);
@@ -207,7 +288,10 @@ export default function MultiSendPage() {
     });
   }
 
-  const totalAmount = recipients.reduce((sum, recipient) => sum + Number(recipient.amount || 0), 0);
+  const totalAmount = recipients.reduce((sum, recipient) => {
+    const amount = parseFloat(recipient.amount || '0');
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0);
 
   return (
     <RequireWallet>
@@ -219,6 +303,7 @@ export default function MultiSendPage() {
               Send tokens to multiple addresses efficiently with a single transaction.
             </p>
           </div>
+
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left: Form */}
@@ -335,13 +420,14 @@ export default function MultiSendPage() {
                   <div className="pt-2">
                     <button
                       type="submit"
-                      disabled={isLoading || isPending || isConfirming || recipients.length === 0}
+                      disabled={isLoading || isWritePending || isSendPending || isConfirming || recipients.length === 0}
                       className="btn-primary w-full py-3 text-lg"
                     >
-                      {isLoading || isPending || isConfirming ? (
+                      {isLoading || isWritePending || isSendPending || isConfirming ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
-                          {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
+                          {isLoading ? 'Preparing...' : 
+                           isWritePending || isSendPending ? 'Confirming...' : 'Processing...'}
                         </div>
                       ) : (
                         `Send to ${recipients.length} Recipients`
