@@ -22,6 +22,7 @@ body {
   color: hsl(var(--foreground));
   background: hsl(var(--background));
   font-feature-settings: "rlig" 1, "calt" 1;
+  font-family: var(--font-pp-mori-regular), Arial, Helvetica, sans-serif;
 }
 
 @layer base {

@@ -1,11 +1,23 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 
-const inter = Inter({ subsets: ['latin'] });
+// Load local PP Mori fonts (Regular for body, SemiBold for headings)
+import localFont from 'next/font/local';
+
+const ppMoriRegular = localFont({
+  src: '../../icon and font/PPMori-Regular.woff2',
+  variable: '--font-pp-mori-regular',
+  display: 'swap',
+});
+
+const ppMoriSemiBold = localFont({
+  src: '../../icon and font/PPMori-SemiBold.woff2',
+  variable: '--font-pp-mori-semibold',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Plasmatic Tools - Web3 Tools for Plasma Mainnet Beta',
@@ -19,7 +31,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${ppMoriRegular.variable} ${ppMoriSemiBold.variable}`}>
         <Providers>
           <div className="min-h-screen bg-gray-50">
             <Header />

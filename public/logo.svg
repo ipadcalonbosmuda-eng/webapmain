@@ -1,0 +1,13 @@
+<!-- Re-export of provided icon and font/logo.svg -->
+<!-- If you replace the original logo, update this file accordingly -->
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <style>
+      .a{fill:#00ff85}
+    </style>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="#111"/>
+  <path class="a" d="M64 128a64 64 0 1 1 64 64 64 64 0 0 1-64-64Zm28-4h40a8 8 0 0 0 0-16H92a8 8 0 0 0 0 16Zm0 32h72a8 8 0 0 0 0-16H92a8 8 0 0 0 0 16Z"/>
+</svg>
+
