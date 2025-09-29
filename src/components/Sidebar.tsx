@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { 
+  LayoutDashboard,
   Coins, 
   Lock, 
   Shield, 
@@ -15,6 +16,7 @@ import {
 import { useState } from 'react';
 
 const navigation = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Token Creation', href: '/tools/create-token', icon: Coins },
   { name: 'Token Locker', href: '/tools/token-locker', icon: Lock },
   { name: 'Liquidity Locker', href: '/tools/liquidity-locker', icon: Shield },
