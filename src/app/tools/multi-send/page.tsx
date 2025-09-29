@@ -184,13 +184,26 @@ export default function MultiSendPage() {
             totalValue: amounts.reduce((sum, amount) => sum + amount, BigInt(0)).toString()
           });
 
-          const txHash = await writeContract({
-            address: multiSendAddress as `0x${string}`,
-            abi: multiSendAbi,
-            functionName: 'multiSend',
-            args: [addresses, amounts],
-            value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)), // Total amount to send
-          });
+          // Try multiSendNative first, fallback to multiSend
+          let txHash;
+          try {
+            txHash = await writeContract({
+              address: multiSendAddress as `0x${string}`,
+              abi: multiSendAbi,
+              functionName: 'multiSendNative',
+              args: [addresses, amounts],
+              value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)), // Total amount to send
+            });
+          } catch (firstError) {
+            console.log('multiSendNative failed, trying multiSend:', firstError);
+            txHash = await writeContract({
+              address: multiSendAddress as `0x${string}`,
+              abi: multiSendAbi,
+              functionName: 'multiSend',
+              args: [addresses, amounts],
+              value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)), // Total amount to send
+            });
+          }
 
           console.log('Transaction Hash:', txHash);
 
