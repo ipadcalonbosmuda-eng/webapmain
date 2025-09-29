@@ -13,7 +13,7 @@ export function Header() {
           </Link>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="hidden lg:flex items-center space-x-4">
           <ConnectButton />
         </div>
       </div>

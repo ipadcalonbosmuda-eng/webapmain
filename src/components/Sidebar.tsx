@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { useState } from 'react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -71,6 +72,13 @@ export function Sidebar() {
                 );
               })}
             </nav>
+          </div>
+          
+          {/* Mobile Connect Wallet Button */}
+          <div className="lg:hidden px-2 pb-4">
+            <div className="border-t border-gray-200 pt-4">
+              <ConnectButton />
+            </div>
           </div>
         </div>
       </div>
