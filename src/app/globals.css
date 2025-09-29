@@ -8,8 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-pp-mori-regular);
+  --font-mono: var(--font-pp-mori-regular);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -29,6 +29,7 @@ body {
 @layer components {
   .btn-primary {
     @apply bg-[#00FF85] hover:bg-[#00E677] text-black font-bold px-5 py-3 rounded-lg transition-colors shadow-lg border-2 border-[#00E677] text-lg;
+    font-family: var(--font-pp-mori-semibold), Arial, Helvetica, sans-serif;
   }
 
   .btn-primary:disabled {
@@ -37,6 +38,7 @@ body {
 
   .btn-secondary {
     @apply bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold px-5 py-3 rounded-lg border-2 border-gray-600 transition-colors shadow-lg text-lg;
+    font-family: var(--font-pp-mori-semibold), Arial, Helvetica, sans-serif;
   }
 
   .btn-secondary:disabled {
@@ -46,4 +48,26 @@ body {
   .card {
     @apply bg-white border border-gray-200 rounded-lg shadow-sm;
   }
+
+  /* Font utility classes */
+  .font-pp-mori-regular {
+    font-family: var(--font-pp-mori-regular), Arial, Helvetica, sans-serif;
+  }
+
+  .font-pp-mori-semibold {
+    font-family: var(--font-pp-mori-semibold), Arial, Helvetica, sans-serif;
+  }
+}
+
+/* Apply PPMori fonts globally */
+* {
+  font-family: var(--font-pp-mori-regular), Arial, Helvetica, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-pp-mori-semibold), Arial, Helvetica, sans-serif;
+}
+
+button, .btn-primary, .btn-secondary {
+  font-family: var(--font-pp-mori-semibold), Arial, Helvetica, sans-serif;
 }

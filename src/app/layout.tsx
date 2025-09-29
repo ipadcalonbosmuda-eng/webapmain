@@ -8,13 +8,13 @@ import { Sidebar } from '@/components/Sidebar';
 import localFont from 'next/font/local';
 
 const ppMoriRegular = localFont({
-  src: '../../icon and font/PPMori-Regular.woff2',
+  src: '../icon and font/PPMori-Regular.woff2',
   variable: '--font-pp-mori-regular',
   display: 'swap',
 });
 
 const ppMoriSemiBold = localFont({
-  src: '../../icon and font/PPMori-SemiBold.woff2',
+  src: '../icon and font/PPMori-SemiBold.woff2',
   variable: '--font-pp-mori-semibold',
   display: 'swap',
 });
