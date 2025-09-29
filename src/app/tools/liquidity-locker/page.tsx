@@ -140,7 +140,7 @@ export default function LiquidityLockerPage() {
                 <button
                   type="submit"
                   disabled={isLoading || isPending || isConfirming}
-                  className="btn-primary w-full py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary w-full py-3 text-lg"
                 >
                   {isLoading || isPending || isConfirming ? (
                     <div className="flex items-center justify-center">
