@@ -179,139 +179,152 @@ export default function MultiSendPage() {
   return (
     <RequireWallet>
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="card p-8">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Multi-Send</h1>
-              <p className="text-gray-600">
-                Send tokens to multiple addresses efficiently with a single transaction.
-              </p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Multi-Send</h1>
+            <p className="text-gray-600">
+              Send tokens to multiple addresses efficiently with a single transaction.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left: Form */}
+            <div className="lg:col-span-8">
+              <div className="card p-8">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+                  {/* File Upload Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Upload Recipients</h3>
+                    <FileDrop
+                      onFileSelect={handleFileSelect}
+                      acceptedTypes={['.csv', '.json']}
+                      maxSize={5}
+                    />
+                    <p className="text-sm text-gray-500">
+                      Upload a CSV or JSON file with address and amount columns. CSV format: address,amount
+                    </p>
+                  </div>
+
+                  {/* Manual Entry Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900">Manual Entry</h3>
+                      <button
+                        type="button"
+                        onClick={() => append({ address: '', amount: '' })}
+                        className="btn-secondary text-sm"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Recipient
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {fields.map((field, index) => (
+                        <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                          <div className="md:col-span-6">
+                            <FormField
+                              label={`Recipient ${index + 1} Address`}
+                              placeholder="0x..."
+                              error={errors.recipients?.[index]?.address?.message}
+                              {...register(`recipients.${index}.address`)}
+                            />
+                          </div>
+                          <div className="md:col-span-5">
+                            <FormField
+                              label="Amount"
+                              placeholder="1000"
+                              error={errors.recipients?.[index]?.amount?.message}
+                              {...register(`recipients.${index}.amount`)}
+                            />
+                          </div>
+                          <div className="md:col-span-1 flex items-end">
+                            {fields.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => remove(index)}
+                                className="p-2 text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Options */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Options</h3>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={useSequential}
+                        onChange={(e) => setUseSequential(e.target.checked)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Use sequential sending (fallback if bulk sending fails)
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={isLoading || isPending || isConfirming || recipients.length === 0}
+                      className="btn-primary w-full py-3 text-lg"
+                    >
+                      {isLoading || isPending || isConfirming ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                          {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
+                        </div>
+                      ) : (
+                        `Send to ${recipients.length} Recipients`
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                {isSuccess && hash && (
+                  <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-green-800 mb-2">Tokens Sent Successfully!</h3>
+                    <p className="text-green-700 mb-4">
+                      Sent tokens to {recipients.length} recipients.
+                    </p>
+                    <a
+                      href={explorerUrl('', hash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
+                    >
+                      View Transaction on Explorer
+                      <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* File Upload Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Upload Recipients</h3>
-                <FileDrop
-                  onFileSelect={handleFileSelect}
-                  acceptedTypes={['.csv', '.json']}
-                  maxSize={5}
-                />
-                <p className="text-sm text-gray-500">
-                  Upload a CSV or JSON file with address and amount columns. CSV format: address,amount
-                </p>
-              </div>
-
-              {/* Manual Entry Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Manual Entry</h3>
-                  <button
-                    type="button"
-                    onClick={() => append({ address: '', amount: '' })}
-                    className="btn-secondary text-sm"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Recipient
-                  </button>
+            {/* Right: Summary Panel */}
+            <div className="lg:col-span-4">
+              <div className="card p-6 lg:sticky lg:top-24 space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-600">Recipients</p>
+                  <p className="text-2xl font-bold text-gray-900">{recipients.length}</p>
+                  <p className="text-sm text-gray-600 mt-4">Estimated Total</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalAmount.toLocaleString()} tokens</p>
                 </div>
-
-                <div className="space-y-3">
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-end space-x-3">
-                      <div className="flex-1">
-                        <FormField
-                          label={`Recipient ${index + 1} Address`}
-                          placeholder="0x..."
-                          error={errors.recipients?.[index]?.address?.message}
-                          {...register(`recipients.${index}.address`)}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <FormField
-                          label="Amount"
-                          placeholder="1000"
-                          error={errors.recipients?.[index]?.amount?.message}
-                          {...register(`recipients.${index}.amount`)}
-                        />
-                      </div>
-                      {fields.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => remove(index)}
-                          className="p-2 text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                <div className="text-sm text-gray-600">
+                  Import supports CSV and JSON. Ensure amounts are in token units.
                 </div>
               </div>
-
-              {/* Summary */}
-              {recipients.length > 0 && (
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-semibold text-gray-900 mb-2">Summary</h4>
-                  <p className="text-sm text-gray-600">
-                    {recipients.length} recipients • Total amount: {totalAmount.toLocaleString()} tokens
-                  </p>
-                </div>
-              )}
-
-              {/* Options */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Options</h3>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={useSequential}
-                    onChange={(e) => setUseSequential(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm text-gray-700">
-                    Use sequential sending (fallback if bulk sending fails)
-                  </span>
-                </label>
-              </div>
-
-              <div className="pt-6">
-                <button
-                  type="submit"
-                  disabled={isLoading || isPending || isConfirming || recipients.length === 0}
-                  className="btn-primary w-full py-3 text-lg"
-                >
-                  {isLoading || isPending || isConfirming ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
-                      {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
-                    </div>
-                  ) : (
-                    `Send to ${recipients.length} Recipients`
-                  )}
-                </button>
-              </div>
-            </form>
-
-            {isSuccess && hash && (
-              <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h3 className="text-lg font-semibold text-green-800 mb-2">Tokens Sent Successfully!</h3>
-                <p className="text-green-700 mb-4">
-                  Sent tokens to {recipients.length} recipients.
-                </p>
-                <a
-                  href={explorerUrl('', hash)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
-                >
-                  View Transaction on Explorer
-                  <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

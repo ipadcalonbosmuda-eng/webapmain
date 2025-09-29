@@ -91,88 +91,109 @@ export default function LiquidityLockerPage() {
   return (
     <RequireWallet>
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="card p-8">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Liquidity Locker</h1>
-              <p className="text-gray-600">
-                Lock your LP tokens to demonstrate long-term commitment to liquidity provision.
-              </p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Liquidity Locker</h1>
+            <p className="text-gray-600">
+              Lock your LP tokens to demonstrate long-term commitment to liquidity provision.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left: Form */}
+            <div className="lg:col-span-8">
+              <div className="card p-8">
+                <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <FormField
+                      label="LP Token Address"
+                      placeholder="0x..."
+                      error={errors.lpTokenAddress?.message}
+                      helperText="Liquidity pool token contract address to lock"
+                      {...register('lpTokenAddress')}
+                      required
+                    />
+                  </div>
+
+                  <FormField
+                    label="Amount to Lock"
+                    placeholder="1000"
+                    error={errors.amount?.message}
+                    helperText="Amount of LP tokens to lock (in token units)"
+                    {...register('amount')}
+                    required
+                  />
+
+                  <FormField
+                    label="Unlock Date"
+                    type="datetime-local"
+                    error={errors.unlockDate?.message}
+                    helperText="Date and time when LP tokens will be unlocked"
+                    {...register('unlockDate')}
+                    required
+                  />
+
+                  <div className="md:col-span-2">
+                    <FormField
+                      label="Memo (Optional)"
+                      placeholder="Locked for 1 year"
+                      error={errors.memo?.message}
+                      helperText="Optional note about this lock"
+                      {...register('memo')}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isLoading || isPending || isConfirming}
+                      className="btn-primary w-full py-3 text-lg"
+                    >
+                      {isLoading || isPending || isConfirming ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                          {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
+                        </div>
+                      ) : (
+                        'Lock LP Token'
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                {isSuccess && hash && (
+                  <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-green-800 mb-2">LP Token Locked Successfully!</h3>
+                    <p className="text-green-700 mb-4">
+                      Your liquidity token has been locked with the specified parameters.
+                    </p>
+                    <a
+                      href={explorerUrl('', hash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
+                    >
+                      View Transaction on Explorer
+                      <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                label="LP Token Address"
-                placeholder="0x..."
-                error={errors.lpTokenAddress?.message}
-                helperText="Liquidity pool token contract address to lock"
-                {...register('lpTokenAddress')}
-                required
-              />
-
-              <FormField
-                label="Amount to Lock"
-                placeholder="1000"
-                error={errors.amount?.message}
-                helperText="Amount of LP tokens to lock (in token units)"
-                {...register('amount')}
-                required
-              />
-
-              <FormField
-                label="Unlock Date"
-                type="datetime-local"
-                error={errors.unlockDate?.message}
-                helperText="Date and time when LP tokens will be unlocked"
-                {...register('unlockDate')}
-                required
-              />
-
-              <FormField
-                label="Memo (Optional)"
-                placeholder="Locked for 1 year"
-                error={errors.memo?.message}
-                helperText="Optional note about this lock"
-                {...register('memo')}
-              />
-
-              <div className="pt-6">
-                <button
-                  type="submit"
-                  disabled={isLoading || isPending || isConfirming}
-                  className="btn-primary w-full py-3 text-lg"
-                >
-                  {isLoading || isPending || isConfirming ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
-                      {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
-                    </div>
-                  ) : (
-                    'Lock LP Token'
-                  )}
-                </button>
+            {/* Right: Info Panel */}
+            <div className="lg:col-span-4">
+              <div className="card p-6 lg:sticky lg:top-24 space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Checklist</h3>
+                <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                  <li>Gunakan alamat LP token yang benar.</li>
+                  <li>Pastikan jumlah sesuai dengan token units.</li>
+                  <li>Catatan (memo) bersifat opsional.</li>
+                </ul>
               </div>
-            </form>
-
-            {isSuccess && hash && (
-              <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h3 className="text-lg font-semibold text-green-800 mb-2">LP Token Locked Successfully!</h3>
-                <p className="text-green-700 mb-4">
-                  Your liquidity token has been locked with the specified parameters.
-                </p>
-                <a
-                  href={explorerUrl('', hash)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
-                >
-                  View Transaction on Explorer
-                  <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

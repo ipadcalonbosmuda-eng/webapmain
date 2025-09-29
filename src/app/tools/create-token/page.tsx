@@ -30,6 +30,7 @@ export default function CreateTokenPage() {
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<CreateTokenForm>({
     resolver: zodResolver(createTokenSchema),
     defaultValues: {
@@ -97,88 +98,124 @@ export default function CreateTokenPage() {
   return (
     <RequireWallet>
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="card p-8">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Token</h1>
-              <p className="text-gray-600">
-                Deploy a new ERC-20 token on Plasma Mainnet Beta with custom parameters.
-              </p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Token</h1>
+            <p className="text-gray-600">
+              Deploy a new ERC-20 token on Plasma Mainnet Beta with custom parameters.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left: Form */}
+            <div className="lg:col-span-8">
+              <div className="card p-8">
+                <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <FormField
+                      label="Token Name"
+                      placeholder="My Awesome Token"
+                      error={errors.name?.message}
+                      {...register('name')}
+                      required
+                    />
+                  </div>
+
+                  <FormField
+                    label="Token Symbol"
+                    placeholder="MAT"
+                    error={errors.symbol?.message}
+                    helperText="2-6 characters, will be displayed as MAT"
+                    {...register('symbol')}
+                    required
+                  />
+
+                  <FormField
+                    label="Total Supply"
+                    placeholder="1000000"
+                    error={errors.totalSupply?.message}
+                    helperText="Total number of tokens to be minted"
+                    {...register('totalSupply')}
+                    required
+                  />
+
+                  <div className="md:col-span-2">
+                    <FormField
+                      label="Owner Address"
+                      placeholder="0x..."
+                      error={errors.owner?.message}
+                      helperText="Address that will own the token contract"
+                      {...register('owner')}
+                      required
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isLoading || isPending || isConfirming}
+                      className="btn-primary w-full py-3 text-lg"
+                    >
+                      {isLoading || isPending || isConfirming ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                          {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
+                        </div>
+                      ) : (
+                        'Create Token'
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                {isSuccess && hash && (
+                  <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-green-800 mb-2">Token Created Successfully!</h3>
+                    <p className="text-green-700 mb-4">
+                      Your token has been deployed to the blockchain.
+                    </p>
+                    <a
+                      href={explorerUrl('', hash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
+                    >
+                      View Transaction on Explorer
+                      <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                label="Token Name"
-                placeholder="My Awesome Token"
-                error={errors.name?.message}
-                {...register('name')}
-                required
-              />
-
-              <FormField
-                label="Token Symbol"
-                placeholder="MAT"
-                error={errors.symbol?.message}
-                helperText="2-6 characters, will be displayed as MAT"
-                {...register('symbol')}
-                required
-              />
-
-              <FormField
-                label="Total Supply"
-                placeholder="1000000"
-                error={errors.totalSupply?.message}
-                helperText="Total number of tokens to be minted"
-                {...register('totalSupply')}
-                required
-              />
-
-              <FormField
-                label="Owner Address"
-                placeholder="0x..."
-                error={errors.owner?.message}
-                helperText="Address that will own the token contract"
-                {...register('owner')}
-                required
-              />
-
-              <div className="pt-6">
-                <button
-                  type="submit"
-                  disabled={isLoading || isPending || isConfirming}
-                  className="btn-primary w-full py-3 text-lg"
-                >
-                  {isLoading || isPending || isConfirming ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
-                      {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
-                    </div>
-                  ) : (
-                    'Create Token'
-                  )}
-                </button>
+            {/* Right: Preview/Guide */}
+            <div className="lg:col-span-4">
+              <div className="card p-6 lg:sticky lg:top-24 space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Guidelines</h3>
+                  <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                    <li>Symbol 2–6 karakter, huruf kapital disarankan.</li>
+                    <li>Total Supply adalah jumlah token awal yang akan dicetak.</li>
+                    <li>Owner Address akan menjadi pemilik kontrak token.</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Preview</h3>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                    <p className="text-sm text-gray-600">Name</p>
+                    <p className="font-semibold text-gray-900">{watch('name') || '—'}</p>
+                    <p className="text-sm text-gray-600 mt-3">Symbol</p>
+                    <p className="font-semibold text-gray-900">{watch('symbol') || '—'}</p>
+                    <p className="text-sm text-gray-600 mt-3">Total Supply</p>
+                    <p className="font-semibold text-gray-900">{watch('totalSupply') || '—'}</p>
+                    <p className="text-sm text-gray-600 mt-3">Owner</p>
+                    <p className="font-mono text-gray-900 break-all">{watch('owner') || '—'}</p>
+                  </div>
+                </div>
               </div>
-            </form>
-
-            {isSuccess && hash && (
-              <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h3 className="text-lg font-semibold text-green-800 mb-2">Token Created Successfully!</h3>
-                <p className="text-green-700 mb-4">
-                  Your token has been deployed to the blockchain.
-                </p>
-                <a
-                  href={explorerUrl('', hash)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
-                >
-                  View Transaction on Explorer
-                  <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
