@@ -61,12 +61,12 @@ export default function HomePage() {
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
             <a
-              href="https://plasmascan.to"
+              href="https://docs.plasma.to"
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary text-lg px-8 py-3 inline-flex items-center justify-center"
             >
-              View Explorer
+              View Docs
             </a>
           </div>
         </div>
