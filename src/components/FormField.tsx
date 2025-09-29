@@ -21,7 +21,7 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
           ref={ref}
           className={cn(
             'input',
-            error && 'border-red-300 focus:ring-red-500 focus:border-red-500',
+            error && 'ring-2 ring-red-400 focus:ring-red-500',
             className
           )}
           {...props}
