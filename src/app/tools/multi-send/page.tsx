@@ -409,14 +409,13 @@ export default function MultiSendPage() {
                   <div className="pt-2">
                     <button
                       type="submit"
-                      disabled={isLoading || isWritePending || isSendPending || isConfirming || recipients.length === 0}
+                      disabled={isLoading || isWritePending || isSendPending || recipients.length === 0}
                       className="btn-primary w-full py-3 text-lg"
                     >
-                      {isLoading || isWritePending || isSendPending || isConfirming ? (
+                      {isLoading || isWritePending || isSendPending ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
-                          {isLoading ? 'Preparing...' : 
-                           isWritePending || isSendPending ? 'Confirming...' : 'Processing...'}
+                          {isLoading ? 'Preparing...' : 'Confirming...'}
                         </div>
                       ) : (
                         `Send to ${recipients.length} Recipients`
