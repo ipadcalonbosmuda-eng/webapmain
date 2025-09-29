@@ -79,10 +79,6 @@ export default function MultiSendPage() {
     name: 'recipients',
   });
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
 
   const recipients = watch('recipients');
 
@@ -280,13 +276,6 @@ export default function MultiSendPage() {
     }
   };
 
-  if (isSuccess && hash) {
-    addToast({
-      type: 'success',
-      title: 'Tokens Sent Successfully!',
-      description: `Sent tokens to ${recipients.length} recipients.`,
-    });
-  }
 
   const totalAmount = recipients.reduce((sum, recipient) => {
     const amount = parseFloat(recipient.amount || '0');
@@ -436,25 +425,6 @@ export default function MultiSendPage() {
                   </div>
                 </form>
 
-                {isSuccess && hash && (
-                  <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-green-800 mb-2">Tokens Sent Successfully!</h3>
-                    <p className="text-green-700 mb-4">
-                      Sent tokens to {recipients.length} recipients.
-                    </p>
-                    <a
-                      href={explorerUrl('', hash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
-                    >
-                      View Transaction on Explorer
-                      <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                  </div>
-                )}
               </div>
             </div>
 
