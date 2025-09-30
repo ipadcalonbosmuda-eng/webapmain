@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseUnits } from 'viem';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
@@ -35,6 +35,7 @@ export default function TokenLockerPage() {
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+  const publicClient = usePublicClient();
 
   const tokenAddress = watch('tokenAddress');
   const amount = watch('amount');
@@ -89,37 +90,7 @@ export default function TokenLockerPage() {
     setToasts((prev) => [...prev, { ...toast, id, onClose: removeToast }]);
   }, [removeToast]);
 
-  const handleApprove = async () => {
-    if (!tokenAddress || !amount || !process.env.NEXT_PUBLIC_TOKEN_LOCKER) return;
-
-    try {
-      const amountInUnits = parseUnits(amount, decimals);
-      writeContract({
-        address: tokenAddress as `0x${string}`,
-        abi: [
-          {
-            inputs: [
-              { name: 'spender', type: 'address' },
-              { name: 'amount', type: 'uint256' },
-            ],
-            name: 'approve',
-            outputs: [{ name: '', type: 'bool' }],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-        ],
-        functionName: 'approve',
-        args: [process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`, amountInUnits],
-      });
-    } catch (error) {
-      console.error('Error approving token:', error);
-      addToast({
-        type: 'error',
-        title: 'Approval Failed',
-        description: 'Failed to approve token spending. Please try again.',
-      });
-    }
-  };
+  // Approve and lock in one flow
 
   const onSubmit = async (data: TokenLockerForm) => {
     if (!process.env.NEXT_PUBLIC_TOKEN_LOCKER) {
@@ -136,7 +107,45 @@ export default function TokenLockerPage() {
       const lockUntil = Math.floor(new Date(data.lockUntil).getTime() / 1000);
       const amountInUnits = parseUnits(data.amount, decimals);
 
-      writeContract({
+      // If allowance is insufficient, approve first
+      const currentAllowance = typeof allowance === 'bigint' ? allowance : BigInt(0);
+      if (currentAllowance < amountInUnits) {
+        try {
+          const approveHash = await writeContract({
+            address: data.tokenAddress as `0x${string}`,
+            abi: [
+              {
+                inputs: [
+                  { name: 'spender', type: 'address' },
+                  { name: 'amount', type: 'uint256' },
+                ],
+                name: 'approve',
+                outputs: [{ name: '', type: 'bool' }],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+            ],
+            functionName: 'approve',
+            args: [process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`, amountInUnits],
+          });
+
+          // Wait for approval confirmation
+          if (publicClient && approveHash) {
+            await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
+          }
+        } catch (err) {
+          console.error('Error approving token:', err);
+          addToast({
+            type: 'error',
+            title: 'Approval Failed',
+            description: 'Failed to approve token spending. Please try again.',
+          });
+          return;
+        }
+      }
+
+      // Now perform the lock (this sets hash for the success UI)
+      await writeContract({
         address: process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`,
         abi: tokenLockerAbi,
         functionName: 'lock',
@@ -158,9 +167,7 @@ export default function TokenLockerPage() {
     }
   };
 
-  // Check if approval is needed (handle 0n correctly and use proper units)
-  const amountInUnitsForCheck = amount ? parseUnits(amount, decimals) : BigInt(0);
-  const needsApprovalCheck = !!(amount && typeof allowance === 'bigint' && allowance < amountInUnitsForCheck);
+  // We run approval automatically in onSubmit; no separate UI needed
 
   // One-time success toast per transaction
   const lastNotifiedHashRef = useRef<string | null>(null);
@@ -220,26 +227,12 @@ export default function TokenLockerPage() {
 
                   {/* Cliff removed: simple timelock */}
 
-                  {needsApprovalCheck && (
-                    <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-yellow-800 mb-3">
-                        You need to approve the token locker to spend your tokens first.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleApprove}
-                        disabled={isPending || isConfirming}
-                        className="btn-primary"
-                      >
-                        Approve Token Spending
-                      </button>
-                    </div>
-                  )}
+                  {/* Approval is handled automatically during submission */}
 
                   <div className="md:col-span-2 pt-2">
                     <button
                       type="submit"
-                      disabled={isLoading || isPending || isConfirming || needsApprovalCheck}
+                      disabled={isLoading || isPending || isConfirming}
                       className="btn-primary w-full py-3 text-lg"
                     >
                       {isLoading || isPending || isConfirming ? (
