@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import tokenLockerAbi from "@/lib/abis/tokenLocker.json";
 import type { Abi } from "viem";
+import { parseAbiItem } from "viem";
 
 export type MyLock = {
   lockId: bigint;
@@ -45,7 +46,7 @@ export function useMyLocks() {
           args: [address],
         })) as bigint[];
 
-        // Fallback: if locksOf returns empty (older deployments), scan all locks by nextLockId
+        // Fallback A: if locksOf returns empty (older deployments), scan all locks by nextLockId
         if (!lockIds || lockIds.length === 0) {
           const maxId = (await client.readContract({
             address: CONTRACT_ADDRESS,
@@ -55,6 +56,21 @@ export function useMyLocks() {
           const allIds: bigint[] = [];
           for (let i = BigInt(1); i <= maxId; i = i + BigInt(1)) allIds.push(i);
           lockIds = allIds;
+        }
+
+        // Fallback B: if still nothing after scanning (or contract is huge), read event logs for owner
+        if (!lockIds || lockIds.length === 0) {
+          const event = parseAbiItem(
+            'event Locked(uint256 indexed lockId, address indexed owner, address indexed token, uint256 amount, uint256 lockUntil)'
+          );
+          const logs = await client.getLogs({
+            address: CONTRACT_ADDRESS,
+            event,
+            args: { owner: address },
+            fromBlock: BigInt(2289855),
+            toBlock: "latest",
+          });
+          lockIds = logs.map((l: any) => l.args.lockId as bigint);
         }
 
         const result: MyLock[] = [];
