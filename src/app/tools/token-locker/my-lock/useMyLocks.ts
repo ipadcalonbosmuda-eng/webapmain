@@ -63,14 +63,14 @@ export function useMyLocks() {
           const event = parseAbiItem(
             'event Locked(uint256 indexed lockId, address indexed owner, address indexed token, uint256 amount, uint256 lockUntil)'
           );
-          const logs = await client.getLogs({
+          const logs = (await client.getLogs({
             address: CONTRACT_ADDRESS,
             event,
             args: { owner: address },
             fromBlock: BigInt(2289855),
             toBlock: "latest",
-          });
-          lockIds = logs.map((l: any) => l.args.lockId as bigint);
+          })) as unknown as Array<{ args: { lockId: bigint } }>;
+          lockIds = logs.map((l) => l.args.lockId);
         }
 
         const result: MyLock[] = [];
