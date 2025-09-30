@@ -150,7 +150,7 @@ export default function CreateTokenPage() {
             const parsed = decodeEventLog({
               abi: tokenFactoryAbi as unknown as Abi,
               data: log.data as `0x${string}`,
-              topics: log.topics as `0x${string}`[],
+              topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             });
             if (parsed.eventName === 'TokenCreated') {
               const args = parsed.args as {
