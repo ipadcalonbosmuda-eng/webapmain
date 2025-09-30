@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { explorerUrl } from '@/lib/utils';
+import { formatUnits } from 'viem';
 
 type LockRow = {
   lockId: bigint;
@@ -12,6 +13,8 @@ type LockRow = {
   withdrawn: bigint;
   lockUntil: bigint;
   withdrawable: bigint;
+  decimals: number;
+  symbol: string;
 };
 
 export default function MyLockPage() {
@@ -74,6 +77,34 @@ export default function MyLockPage() {
           }) as Promise<bigint>,
         ]);
 
+        // Fetch ERC20 decimals and symbol for display
+        let decimals = 18;
+        let symbol = '';
+        try {
+          const [dec, sym] = await Promise.all([
+            publicClient.readContract({
+              address: info.token,
+              abi: [
+                { inputs: [], name: 'decimals', outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view', type: 'function' },
+              ],
+              functionName: 'decimals',
+              args: [],
+            }) as Promise<number>,
+            publicClient.readContract({
+              address: info.token,
+              abi: [
+                { inputs: [], name: 'symbol', outputs: [{ name: '', type: 'string' }], stateMutability: 'view', type: 'function' },
+              ],
+              functionName: 'symbol',
+              args: [],
+            }) as Promise<string>,
+          ]);
+          decimals = Number(dec ?? 18);
+          symbol = sym ?? '';
+        } catch {
+          // ignore
+        }
+
         results.push({
           lockId: id,
           token: info.token,
@@ -81,6 +112,8 @@ export default function MyLockPage() {
           withdrawn: info.withdrawn,
           lockUntil: info.lockUntil,
           withdrawable: wdr,
+          decimals,
+          symbol,
         });
       }
 
@@ -147,10 +180,14 @@ export default function MyLockPage() {
                     <tr key={row?.lockId ? String(row.lockId) : `row-${idx}`} className="border-t border-gray-200">
                       <td className="py-3 pr-4 font-mono">{row?.lockId ? String(row.lockId) : '-'}</td>
                       <td className="py-3 pr-4 font-mono break-all">{row?.token || '-'}</td>
-                      <td className="py-3 pr-4">{String(row?.amount ?? BigInt(0))}</td>
-                      <td className="py-3 pr-4">{String(row?.withdrawn ?? BigInt(0))}</td>
+                      <td className="py-3 pr-4">
+                        {row ? `${formatUnits(row.amount - row.withdrawn, row.decimals)} ${row.symbol || ''}` : '-'}
+                      </td>
+                      <td className="py-3 pr-4">
+                        {row ? `${formatUnits(row.withdrawn, row.decimals)} ${row.symbol || ''}` : '-'}
+                      </td>
                       <td className="py-3 pr-4">{new Date(Number(row?.lockUntil ?? BigInt(0)) * 1000).toLocaleString()}</td>
-                      <td className="py-3 pr-4">{String(row?.withdrawable ?? BigInt(0))}</td>
+                      <td className="py-3 pr-4">{row ? `${formatUnits(row.withdrawable, row.decimals)} ${row.symbol || ''}` : '-'}</td>
                       <td className="py-3 pr-4">
                         <button
                           className="btn-primary px-3 py-1"
