@@ -80,8 +80,20 @@ export default function CreateTokenPage() {
         symbol: data.symbol,
         totalSupplyOriginal: data.totalSupply,
         totalSupplyWithDecimals: totalSupplyWithDecimals.toString(),
-        owner: data.owner
+        owner: data.owner,
+        contractAddress: process.env.NEXT_PUBLIC_TOKEN_FACTORY
       });
+
+      // Validate contract address format
+      const contractAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY;
+      if (!contractAddress || !contractAddress.startsWith('0x') || contractAddress.length !== 42) {
+        addToast({
+          type: 'error',
+          title: 'Invalid Contract Address',
+          description: `Token factory contract address is invalid: ${contractAddress}`,
+        });
+        return;
+      }
 
       // Try different function signatures
       let success = false;
@@ -90,10 +102,11 @@ export default function CreateTokenPage() {
         // Try createToken with decimals parameter (name, symbol, totalSupply, decimals, owner)
         console.log('Trying createToken with decimals...');
         await writeContract({
-          address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+          address: contractAddress as `0x${string}`,
           abi: tokenFactoryAbi,
           functionName: 'createToken',
           args: [data.name, data.symbol, totalSupplyWithDecimals, 18, data.owner as `0x${string}`],
+          gas: BigInt(2000000), // Add explicit gas limit
         });
         success = true;
         console.log('✅ createToken with decimals succeeded');
@@ -104,10 +117,11 @@ export default function CreateTokenPage() {
           // Try createToken without decimals (name, symbol, totalSupply, owner)
           console.log('Trying createToken without decimals...');
           await writeContract({
-            address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+            address: contractAddress as `0x${string}`,
             abi: tokenFactoryAbi,
             functionName: 'createToken',
             args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
+            gas: BigInt(2000000),
           });
           success = true;
           console.log('✅ createToken without decimals succeeded');
@@ -118,10 +132,11 @@ export default function CreateTokenPage() {
             // Try create function (name, symbol, totalSupply, owner)
             console.log('Trying create function...');
             await writeContract({
-              address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+              address: contractAddress as `0x${string}`,
               abi: tokenFactoryAbi,
               functionName: 'create',
               args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
+              gas: BigInt(2000000),
             });
             success = true;
             console.log('✅ create function succeeded');
@@ -131,10 +146,11 @@ export default function CreateTokenPage() {
             // Try with original totalSupply (no decimals multiplication)
             console.log('Trying create with original totalSupply...');
             await writeContract({
-              address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+              address: contractAddress as `0x${string}`,
               abi: tokenFactoryAbi,
               functionName: 'create',
               args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
+              gas: BigInt(2000000),
             });
             success = true;
             console.log('✅ create with original totalSupply succeeded');
