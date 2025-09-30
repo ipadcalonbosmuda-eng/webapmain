@@ -135,7 +135,10 @@ export default function TokenLockerPage() {
         await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
       }
 
-      // Try to refetch allowance and determine state. If refetch missing or fails, fallback to optimistic true.
+      // Optimistically enable Lock button immediately after receipt
+      setApprovedForAmount(true);
+
+      // Then refetch allowance and correct state if needed
       try {
         const res = await refetchAllowance?.();
         const latestAllowance = (res?.data ?? allowance) as unknown as bigint | undefined;
