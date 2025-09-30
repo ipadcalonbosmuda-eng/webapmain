@@ -98,7 +98,7 @@ export function useMyLocks() {
           })) as unknown;
           // Handle tuple or object return shape
           const info: LockInfo = ((): LockInfo => {
-            if (infoRaw && typeof infoRaw === 'object' && 'owner' in (infoRaw as any)) {
+            if (infoRaw && typeof infoRaw === 'object' && !Array.isArray(infoRaw) && 'owner' in (infoRaw as Record<string, unknown>)) {
               const obj = infoRaw as Record<string, unknown>;
               return {
                 token: obj.token as `0x${string}`,
@@ -108,14 +108,14 @@ export function useMyLocks() {
                 owner: obj.owner as `0x${string}`,
               };
             }
-            const [token, amount, withdrawn, lockUntil, owner] = infoRaw as readonly [
-              `0x${string}`,
-              bigint,
-              bigint,
-              bigint,
-              `0x${string}`
-            ];
-            return { token, amount, withdrawn, lockUntil, owner };
+            const arr = infoRaw as unknown as Array<unknown>;
+            return {
+              token: arr?.[0] as `0x${string}`,
+              amount: arr?.[1] as bigint,
+              withdrawn: arr?.[2] as bigint,
+              lockUntil: arr?.[3] as bigint,
+              owner: arr?.[4] as `0x${string}`,
+            };
           })();
           console.log('[MyLock] lock', String(id), 'owner', info.owner);
 
