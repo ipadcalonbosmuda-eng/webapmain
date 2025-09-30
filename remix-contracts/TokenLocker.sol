@@ -9,18 +9,15 @@ interface IERC20 {
     function decimals() external view returns (uint8);
 }
 
-/// @title Simple Token Locker with optional cliff and linear vesting
-/// @notice Matches frontend ABI: lock(token, amount, lockUntil, cliff)
-/// - Tokens are transferred to this contract and locked until `lockUntil`.
-/// - If `cliff` is set (>0), linear vesting starts at `cliff` and ends at `lockUntil`.
-/// - If `cliff == 0`, the full amount is withdrawable at `lockUntil`.
+/// @title Simple Token Locker (pure timelock)
+/// @author Plasmatic Tools
+/// @notice Minimal locker: tokens cannot be withdrawn until `lockUntil`. No vesting/cliff.
 contract TokenLocker {
     struct LockInfo {
         address token;
         uint256 amount;          // total locked amount
         uint256 withdrawn;       // amount already withdrawn
         uint256 lockUntil;       // end of vesting; all unlocked by this time
-        uint256 cliff;           // start of vesting; 0 means no vesting (all at lockUntil)
         address owner;
     }
 
@@ -38,8 +35,7 @@ contract TokenLocker {
         address indexed owner,
         address indexed token,
         uint256 amount,
-        uint256 lockUntil,
-        uint256 cliff
+        uint256 lockUntil
     );
 
     event Withdrawn(uint256 indexed lockId, address indexed owner, uint256 amount);
@@ -48,15 +44,13 @@ contract TokenLocker {
     error NotOwner();
     error NothingToWithdraw();
 
-    /// @notice Lock `amount` of `token` for the caller
+    /// @notice Lock `amount` of `token` for the caller until `lockUntil`.
     /// @param token ERC20 token address
     /// @param amount amount in token units
-    /// @param lockUntil unix timestamp when fully unlocked
-    /// @param cliff unix timestamp when vesting begins (0 for no vesting)
-    function lock(address token, uint256 amount, uint256 lockUntil, uint256 cliff) external {
+    /// @param lockUntil unix timestamp when unlocked
+    function lock(address token, uint256 amount, uint256 lockUntil) external {
         if (token == address(0) || amount == 0) revert InvalidParams();
         if (lockUntil <= block.timestamp) revert InvalidParams();
-        if (cliff > 0 && (cliff >= lockUntil)) revert InvalidParams();
 
         // Transfer tokens from sender to this contract
         require(IERC20(token).transferFrom(msg.sender, address(this), amount), "TRANSFER_FROM_FAILED");
@@ -67,39 +61,20 @@ contract TokenLocker {
             amount: amount,
             withdrawn: 0,
             lockUntil: lockUntil,
-            cliff: cliff,
             owner: msg.sender
         });
         ownerLocks[msg.sender].push(lockId);
 
-        emit Locked(lockId, msg.sender, token, amount, lockUntil, cliff);
+        emit Locked(lockId, msg.sender, token, amount, lockUntil);
     }
 
-    /// @notice View how much is currently withdrawable for a lock
+    /// @notice View how much is currently withdrawable for a lock (pure timelock)
     function withdrawable(uint256 lockId) public view returns (uint256) {
         LockInfo memory info = locks[lockId];
         if (info.amount == 0) return 0;
 
-        // No vesting: 100% available at lockUntil
-        if (info.cliff == 0) {
-            if (block.timestamp < info.lockUntil) return 0;
-            return info.amount - info.withdrawn;
-        }
-
-        // Linear vesting between cliff and lockUntil
-        if (block.timestamp <= info.cliff) {
-            return 0;
-        }
-        if (block.timestamp >= info.lockUntil) {
-            return info.amount - info.withdrawn;
-        }
-
-        // Pro-rata unlocked so far
-        uint256 vestingDuration = info.lockUntil - info.cliff; // > 0 by validation
-        uint256 timeElapsed = block.timestamp - info.cliff;
-        uint256 unlocked = (info.amount * timeElapsed) / vestingDuration;
-        if (unlocked <= info.withdrawn) return 0;
-        return unlocked - info.withdrawn;
+        if (block.timestamp < info.lockUntil) return 0;
+        return info.amount - info.withdrawn;
     }
 
     /// @notice Withdraw available tokens for a lock
