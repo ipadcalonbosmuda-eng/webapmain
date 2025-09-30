@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { parseUnits } from 'viem';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
@@ -14,7 +15,6 @@ const tokenLockerSchema = z.object({
   tokenAddress: z.string().min(42, 'Invalid token address').max(42, 'Invalid token address'),
   amount: z.string().min(1, 'Amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Amount must be a positive number'),
   lockUntil: z.string().min(1, 'Lock date is required'),
-  cliff: z.string().optional(),
 });
 
 type TokenLockerForm = z.infer<typeof tokenLockerSchema>;
@@ -39,6 +39,23 @@ export default function TokenLockerPage() {
   const tokenAddress = watch('tokenAddress');
   const amount = watch('amount');
 
+  // Read token decimals (default to 18 if call fails) for correct unit conversion
+  const { data: tokenDecimals } = useReadContract({
+    address: tokenAddress as `0x${string}`,
+    abi: [
+      {
+        inputs: [],
+        name: 'decimals',
+        outputs: [{ name: '', type: 'uint8' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    functionName: 'decimals',
+    query: { enabled: !!tokenAddress },
+  });
+  const decimals = Number((tokenDecimals as unknown as number) ?? 18);
+
   // Check allowance
   const { data: allowance } = useReadContract({
     address: tokenAddress as `0x${string}`,
@@ -61,19 +78,22 @@ export default function TokenLockerPage() {
     },
   });
 
-  const addToast = (toast: ToastData) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => [...prev, { ...toast, id, onClose: removeToast }]);
-  };
-
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  }, []);
+
+  const addToast = useCallback((toast: ToastData) => {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 11);
+    setToasts((prev) => [...prev, { ...toast, id, onClose: removeToast }]);
+  }, [removeToast]);
 
   const handleApprove = async () => {
     if (!tokenAddress || !amount || !process.env.NEXT_PUBLIC_TOKEN_LOCKER) return;
 
     try {
+      const amountInUnits = parseUnits(amount, decimals);
       writeContract({
         address: tokenAddress as `0x${string}`,
         abi: [
@@ -89,7 +109,7 @@ export default function TokenLockerPage() {
           },
         ],
         functionName: 'approve',
-        args: [process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`, BigInt(amount)],
+        args: [process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`, amountInUnits],
       });
     } catch (error) {
       console.error('Error approving token:', error);
@@ -114,7 +134,7 @@ export default function TokenLockerPage() {
     setIsLoading(true);
     try {
       const lockUntil = Math.floor(new Date(data.lockUntil).getTime() / 1000);
-      const cliff = data.cliff ? Math.floor(new Date(data.cliff).getTime() / 1000) : 0;
+      const amountInUnits = parseUnits(data.amount, decimals);
 
       writeContract({
         address: process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`,
@@ -122,9 +142,8 @@ export default function TokenLockerPage() {
         functionName: 'lock',
         args: [
           data.tokenAddress as `0x${string}`,
-          BigInt(data.amount),
+          amountInUnits,
           BigInt(lockUntil),
-          BigInt(cliff),
         ],
       });
     } catch (error) {
@@ -139,16 +158,22 @@ export default function TokenLockerPage() {
     }
   };
 
-  // Check if approval is needed
-  const needsApprovalCheck = !!(allowance && amount && BigInt(allowance) < BigInt(amount));
+  // Check if approval is needed (handle 0n correctly and use proper units)
+  const amountInUnitsForCheck = amount ? parseUnits(amount, decimals) : BigInt(0);
+  const needsApprovalCheck = !!(amount && typeof allowance === 'bigint' && allowance < amountInUnitsForCheck);
 
-  if (isSuccess && hash) {
-    addToast({
-      type: 'success',
-      title: 'Token Locked Successfully!',
-      description: 'Your token has been locked with the specified parameters.',
-    });
-  }
+  // One-time success toast per transaction
+  const lastNotifiedHashRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isSuccess && hash && lastNotifiedHashRef.current !== hash) {
+      addToast({
+        type: 'success',
+        title: 'Token Locked Successfully!',
+        description: 'Your token has been locked until the specified date.',
+      });
+      lastNotifiedHashRef.current = hash;
+    }
+  }, [isSuccess, hash, addToast]);
 
   return (
     <RequireWallet>
@@ -156,9 +181,7 @@ export default function TokenLockerPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Token Locker</h1>
-            <p className="text-gray-600">
-              Lock your ERC-20 tokens with custom vesting schedules and cliff periods.
-            </p>
+            <p className="text-gray-600">Lock your ERC-20 tokens until a specified unlock date.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -195,15 +218,7 @@ export default function TokenLockerPage() {
                     required
                   />
 
-                  <div className="md:col-span-2">
-                    <FormField
-                      label="Cliff Date (Optional)"
-                      type="datetime-local"
-                      error={errors.cliff?.message}
-                      helperText="Date when tokens start vesting (optional)"
-                      {...register('cliff')}
-                    />
-                  </div>
+                  {/* Cliff removed: simple timelock */}
 
                   {needsApprovalCheck && (
                     <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -268,7 +283,7 @@ export default function TokenLockerPage() {
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
                   <li>Ensure your token supports `approve` for the locker.</li>
                   <li>Use a future date for `Lock Until`.</li>
-                  <li>`Cliff` is optional to delay the vesting start.</li>
+                  {/* Cliff removed for Token Locker */}
                 </ul>
               </div>
             </div>
