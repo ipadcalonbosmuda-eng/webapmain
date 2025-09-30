@@ -54,7 +54,7 @@ export function Toast({ id, type, title, description, duration = 5000, onClose }
   return (
     <div
       className={cn(
-        'relative max-w-sm w-full bg-white border rounded-lg shadow-lg transform transition-all duration-300',
+        'relative w-full bg-white border rounded-lg shadow-lg transform transition-all duration-300',
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0',
         colors[type]
       )}
@@ -64,10 +64,10 @@ export function Toast({ id, type, title, description, duration = 5000, onClose }
           <div className="flex-shrink-0">
             <Icon className="h-5 w-5" />
           </div>
-          <div className="ml-3 w-0 flex-1">
-            <p className="text-sm font-medium">{title}</p>
+          <div className="ml-3 min-w-0 flex-1">
+            <p className="text-sm font-medium break-words">{title}</p>
             {description && (
-              <p className="mt-1 text-sm opacity-90">{description}</p>
+              <p className="mt-1 text-sm opacity-90 break-words">{description}</p>
             )}
           </div>
           <div className="ml-4 flex-shrink-0 flex">
@@ -87,7 +87,7 @@ export function Toast({ id, type, title, description, duration = 5000, onClose }
 
 export function ToastContainer({ toasts, onClose }: { toasts: ToastProps[]; onClose: (id: string) => void }) {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+    <div className="fixed top-4 right-4 z-50 space-y-2 w-[320px] max-w-[90vw]">
       {toasts.map((toast) => (
         <Toast key={toast.id} {...toast} onClose={onClose} />
       ))}
