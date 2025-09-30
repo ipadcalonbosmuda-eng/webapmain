@@ -64,12 +64,31 @@ export default function CreateTokenPage() {
 
     setIsLoading(true);
     try {
-      writeContract({
-        address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
-        abi: tokenFactoryAbi,
-        functionName: 'create',
-        args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
+      console.log('Create Token Debug Info:', {
+        contractAddress: process.env.NEXT_PUBLIC_TOKEN_FACTORY,
+        name: data.name,
+        symbol: data.symbol,
+        totalSupply: data.totalSupply,
+        owner: data.owner
       });
+
+      // Try createToken first, fallback to create
+      try {
+        await writeContract({
+          address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+          abi: tokenFactoryAbi,
+          functionName: 'createToken',
+          args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
+        });
+      } catch (firstError) {
+        console.log('createToken failed, trying create:', firstError);
+        await writeContract({
+          address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+          abi: tokenFactoryAbi,
+          functionName: 'create',
+          args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
+        });
+      }
     } catch (error) {
       console.error('Error creating token:', error);
       addToast({
