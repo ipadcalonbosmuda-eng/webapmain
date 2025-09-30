@@ -37,27 +37,45 @@ export function useMyLocks() {
       setLoading(true);
       setError(null);
       try {
-        const lockIds = (await client.readContract({
+        const abi = tokenLockerAbi as unknown as Abi;
+        let lockIds = (await client.readContract({
           address: CONTRACT_ADDRESS,
-          abi: tokenLockerAbi as unknown as Abi,
+          abi,
           functionName: "locksOf",
           args: [address],
         })) as bigint[];
+
+        // Fallback: if locksOf returns empty (older deployments), scan all locks by nextLockId
+        if (!lockIds || lockIds.length === 0) {
+          const maxId = (await client.readContract({
+            address: CONTRACT_ADDRESS,
+            abi,
+            functionName: "nextLockId",
+          })) as bigint;
+          const allIds: bigint[] = [];
+          for (let i = BigInt(1); i <= maxId; i = i + BigInt(1)) allIds.push(i);
+          lockIds = allIds;
+        }
 
         const result: MyLock[] = [];
         for (const id of lockIds) {
           type LockInfo = { token: `0x${string}`; amount: bigint; withdrawn: bigint; lockUntil: bigint; owner: `0x${string}` };
           const info = (await client.readContract({
             address: CONTRACT_ADDRESS,
-            abi: tokenLockerAbi as unknown as Abi,
+            abi,
             functionName: "locks",
             args: [id],
           })) as LockInfo;
 
+          // Skip locks that don't belong to the current user (in case of fallback scan)
+          if (info.owner.toLowerCase() !== address.toLowerCase()) {
+            continue;
+          }
+
           const [w, dec, sym] = await Promise.all([
             client.readContract({
               address: CONTRACT_ADDRESS,
-              abi: tokenLockerAbi as unknown as Abi,
+              abi,
               functionName: "withdrawable",
               args: [id],
             }) as Promise<bigint>,
