@@ -153,15 +153,15 @@ export default function CreateTokenPage() {
               topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
             });
             if (parsed.eventName === 'TokenCreated') {
-              const args = parsed.args as {
-                token: `0x${string}`;
-                owner: `0x${string}`;
-                name: string;
-                symbol: string;
-                totalSupply: bigint;
-              };
-              tokenAddress = args.token;
-              break;
+              const a = parsed.args;
+              if (Array.isArray(a)) {
+                const [token] = a as [`0x${string}`, `0x${string}`, string, string, bigint];
+                tokenAddress = token;
+              } else if (a && typeof a === 'object') {
+                const token = (a as Record<string, unknown>).token as `0x${string}` | undefined;
+                if (token) tokenAddress = token;
+              }
+              if (tokenAddress) break;
             }
           } catch {
             // skip non-matching logs
