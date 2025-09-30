@@ -454,6 +454,29 @@ export default function MultiSendPage() {
                   <p className="text-sm text-gray-600 mt-4">Estimated Total</p>
                   <p className="text-2xl font-bold text-gray-900">{totalAmount.toLocaleString()} tokens</p>
                 </div>
+                <div className={`border rounded-lg p-4 ${
+                  process.env.NEXT_PUBLIC_MULTISEND 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <h4 className={`text-sm font-semibold mb-2 ${
+                    process.env.NEXT_PUBLIC_MULTISEND 
+                      ? 'text-green-800' 
+                      : 'text-blue-800'
+                  }`}>
+                    {process.env.NEXT_PUBLIC_MULTISEND ? 'Contract Ready' : 'Contract Required'}
+                  </h4>
+                  <p className={`text-sm ${
+                    process.env.NEXT_PUBLIC_MULTISEND 
+                      ? 'text-green-700' 
+                      : 'text-blue-700'
+                  }`}>
+                    {process.env.NEXT_PUBLIC_MULTISEND 
+                      ? 'Multi-send contract is configured and ready to use. You can send tokens to multiple recipients in a single transaction.'
+                      : 'Multi-send requires a deployed multi-send contract on Plasma Mainnet Beta. Please contact support for contract deployment.'
+                    }
+                  </p>
+                </div>
                 <div className="text-sm text-gray-600">
                   Import supports CSV and JSON. Ensure amounts are in token units.
                 </div>
