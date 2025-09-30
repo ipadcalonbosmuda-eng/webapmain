@@ -32,7 +32,7 @@ export default function TokenLockerPage() {
   } = useForm<TokenLockerForm>();
 
   const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, status: receiptStatus } = useWaitForTransactionReceipt({
     hash,
   });
   const publicClient = usePublicClient();
@@ -218,7 +218,7 @@ export default function TokenLockerPage() {
   // One-time success toast per transaction
   const lastNotifiedHashRef = useRef<string | null>(null);
   useEffect(() => {
-    if (isSuccess && hash && lastTxType === 'lock' && lastNotifiedHashRef.current !== hash) {
+    if (isSuccess && receiptStatus === 'success' && hash && lastTxType === 'lock' && lastNotifiedHashRef.current !== hash) {
       addToast({
         type: 'success',
         title: 'Token Locked Successfully!',
@@ -226,7 +226,7 @@ export default function TokenLockerPage() {
       });
       lastNotifiedHashRef.current = hash;
     }
-  }, [isSuccess, hash, lastTxType, addToast]);
+  }, [isSuccess, receiptStatus, hash, lastTxType, addToast]);
 
   return (
     <RequireWallet>
@@ -305,7 +305,7 @@ export default function TokenLockerPage() {
                   </div>
                 </form>
 
-                {isSuccess && hash && (
+                {isSuccess && hash && lastTxType === 'lock' && (
                   <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <h3 className="text-lg font-semibold text-green-800 mb-2">Token Locked Successfully!</h3>
                     <p className="text-green-700 mb-4">
