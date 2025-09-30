@@ -10,6 +10,7 @@ import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
 import { explorerUrl } from '@/lib/utils';
 import tokenFactoryAbi from '@/lib/abis/tokenFactory.json';
+import { parseUnits } from 'viem';
 
 const createTokenSchema = z.object({
   name: z.string().min(1, 'Token name is required'),
@@ -77,8 +78,8 @@ export default function CreateTokenPage() {
     try {
       console.log('🚀 Creating Token:', { name: data.name, symbol: data.symbol });
 
-      // Convert total supply to wei using exact BigInt math (10n ** 18n)
-      const totalSupplyWithDecimals = BigInt(data.totalSupply) * (10n ** 18n);
+      // Convert total supply to wei using viem's parseUnits (no BigInt literals)
+      const totalSupplyWithDecimals = parseUnits(data.totalSupply, 18);
 
       // Validate contract address format
       const contractAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY;
