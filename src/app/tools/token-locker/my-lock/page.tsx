@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { explorerUrl } from '@/lib/utils';
@@ -143,14 +143,14 @@ export default function MyLockPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.lockId.toString()} className="border-t border-gray-200">
-                      <td className="py-3 pr-4 font-mono">{row.lockId.toString()}</td>
-                      <td className="py-3 pr-4 font-mono break-all">{row.token}</td>
-                      <td className="py-3 pr-4">{row.amount.toString()}</td>
-                      <td className="py-3 pr-4">{row.withdrawn.toString()}</td>
-                      <td className="py-3 pr-4">{new Date(Number(row.lockUntil) * 1000).toLocaleString()}</td>
-                      <td className="py-3 pr-4">{row.withdrawable.toString()}</td>
+                  {rows.map((row, idx) => (
+                    <tr key={row?.lockId ? String(row.lockId) : `row-${idx}`} className="border-t border-gray-200">
+                      <td className="py-3 pr-4 font-mono">{row?.lockId ? String(row.lockId) : '-'}</td>
+                      <td className="py-3 pr-4 font-mono break-all">{row?.token || '-'}</td>
+                      <td className="py-3 pr-4">{String(row?.amount ?? BigInt(0))}</td>
+                      <td className="py-3 pr-4">{String(row?.withdrawn ?? BigInt(0))}</td>
+                      <td className="py-3 pr-4">{new Date(Number(row?.lockUntil ?? BigInt(0)) * 1000).toLocaleString()}</td>
+                      <td className="py-3 pr-4">{String(row?.withdrawable ?? BigInt(0))}</td>
                       <td className="py-3 pr-4">
                         <button
                           className="btn-primary px-3 py-1"
