@@ -154,13 +154,13 @@ export default function CreateTokenPage() {
             });
             if (parsed.eventName === 'TokenCreated') {
               const args = parsed.args as {
-                token: string;
-                owner?: string;
-                name?: string;
-                symbol?: string;
-                totalSupply?: bigint;
+                token: `0x${string}`;
+                owner: `0x${string}`;
+                name: string;
+                symbol: string;
+                totalSupply: bigint;
               };
-              tokenAddress = args.token as string;
+              tokenAddress = args.token;
               break;
             }
           } catch {
