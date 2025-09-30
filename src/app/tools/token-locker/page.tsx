@@ -37,6 +37,7 @@ export default function TokenLockerPage() {
   });
   const publicClient = usePublicClient();
   const [isApproving, setIsApproving] = useState(false);
+  const [approvalSyncing, setApprovalSyncing] = useState(false); // waiting for allowance to reflect
   const [approvedForAmount, setApprovedForAmount] = useState(false);
   const [lastTxType, setLastTxType] = useState<'approve' | 'lock' | null>(null);
 
@@ -64,6 +65,7 @@ export default function TokenLockerPage() {
   useEffect(() => {
     // Reset approval state when user changes token or amount
     setApprovedForAmount(false);
+    setApprovalSyncing(false);
   }, [tokenAddress, amount]);
 
   // Check allowance
@@ -135,20 +137,26 @@ export default function TokenLockerPage() {
         await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
       }
 
-      // Optimistically enable Lock button immediately after receipt
-      setApprovedForAmount(true);
+      // Keep button in loading state while allowance syncs on-chain/indexer
+      setIsApproving(false);
+      setApprovalSyncing(true);
 
-      // Then refetch allowance and correct state if needed
+      // Refetch allowance until it covers the requested amount
       try {
-        const res = await refetchAllowance?.();
-        const latestAllowance = (res?.data ?? allowance) as unknown as bigint | undefined;
-        if (typeof latestAllowance === 'bigint') {
-          setApprovedForAmount(latestAllowance >= amountInUnits);
-        } else {
-          setApprovedForAmount(true);
+        for (let i = 0; i < 20; i++) { // ~20s max
+          const res = await refetchAllowance?.();
+          const latestAllowance = (res?.data ?? allowance) as unknown as bigint | undefined;
+          if (typeof latestAllowance === 'bigint' && latestAllowance >= amountInUnits) {
+            setApprovedForAmount(true);
+            setApprovalSyncing(false);
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
         }
       } catch {
-        setApprovedForAmount(true);
+        // If anything goes wrong, leave UI on Approve but inform the user
+        setApprovedForAmount(false);
+        setApprovalSyncing(false);
       }
       addToast({
         type: 'success',
@@ -274,12 +282,17 @@ export default function TokenLockerPage() {
 
                   <div className="md:col-span-2 pt-2">
                     <button
-                      type={needsApprovalCheck ? 'button' : 'submit'}
-                      onClick={needsApprovalCheck ? handleApprove : undefined}
-                      disabled={needsApprovalCheck ? (isApproving || isPending || isConfirming) : (isLoading || isPending || isConfirming)}
+                      type={approvalSyncing ? 'button' : needsApprovalCheck ? 'button' : 'submit'}
+                      onClick={approvalSyncing ? undefined : needsApprovalCheck ? handleApprove : undefined}
+                      disabled={approvalSyncing ? true : needsApprovalCheck ? (isApproving || isPending || isConfirming) : (isLoading || isPending || isConfirming)}
                       className="btn-primary w-full py-3 text-lg"
                     >
-                      {needsApprovalCheck ? (
+                      {approvalSyncing ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                          Finalizing approval...
+                        </div>
+                      ) : needsApprovalCheck ? (
                         isApproving || isPending || isConfirming ? (
                           <div className="flex items-center justify-center">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
