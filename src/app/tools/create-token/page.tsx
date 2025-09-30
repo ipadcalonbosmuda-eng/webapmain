@@ -77,8 +77,8 @@ export default function CreateTokenPage() {
     try {
       console.log('🚀 Creating Token:', { name: data.name, symbol: data.symbol });
 
-      // Convert total supply to proper format (multiply by 10^18 for standard ERC20)
-      const totalSupplyWithDecimals = BigInt(data.totalSupply) * BigInt(10 ** 18);
+      // Convert total supply to wei using exact BigInt math (10n ** 18n)
+      const totalSupplyWithDecimals = BigInt(data.totalSupply) * (10n ** 18n);
 
       // Validate contract address format
       const contractAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY;
@@ -91,77 +91,19 @@ export default function CreateTokenPage() {
         return;
       }
 
-      // Try different function signatures
-      let success = false;
-      
-      try {
-        console.log('1️⃣ Trying createToken with decimals...');
-        await writeContract({
-          address: contractAddress as `0x${string}`,
-          abi: tokenFactoryAbi,
-          functionName: 'createToken',
-          args: [data.name, data.symbol, totalSupplyWithDecimals, 18, data.owner as `0x${string}`],
-          gas: BigInt(2000000),
-        });
-        success = true;
-        console.log('✅ SUCCESS Level 1');
-      } catch (firstError) {
-        console.log('❌ Level 1 failed');
-        
-        try {
-          console.log('2️⃣ Trying createToken without decimals...');
-          await writeContract({
-            address: contractAddress as `0x${string}`,
-            abi: tokenFactoryAbi,
-            functionName: 'createToken',
-            args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
-            gas: BigInt(2000000),
-          });
-          success = true;
-          console.log('✅ SUCCESS Level 2');
-        } catch (secondError) {
-          console.log('❌ Level 2 failed');
-          
-          try {
-            console.log('3️⃣ Trying create function...');
-            await writeContract({
-              address: contractAddress as `0x${string}`,
-              abi: tokenFactoryAbi,
-              functionName: 'create',
-              args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
-              gas: BigInt(2000000),
-            });
-            success = true;
-            console.log('✅ SUCCESS Level 3');
-          } catch (thirdError) {
-            console.log('❌ Level 3 failed');
-            
-            console.log('4️⃣ Final attempt...');
-            await writeContract({
-              address: contractAddress as `0x${string}`,
-              abi: tokenFactoryAbi,
-              functionName: 'create',
-              args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
-              gas: BigInt(2000000),
-            });
-            success = true;
-            console.log('✅ SUCCESS Level 4');
-          }
-        }
-      }
-      
-      if (success) {
+      // Single canonical call matching our TokenFactory
+      await writeContract({
+        address: contractAddress as `0x${string}`,
+        abi: tokenFactoryAbi,
+        functionName: 'createToken',
+        args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
+      });
+
+      {
         addToast({
           type: 'success',
           title: 'Token Creation Submitted',
           description: 'Transaction has been submitted to the blockchain.',
-        });
-      } else {
-        // All attempts failed
-        addToast({
-          type: 'error',
-          title: 'All Attempts Failed',
-          description: 'Contract execution failed. Try with different symbol/name or check if contract is properly deployed.',
         });
       }
     } catch (error) {
