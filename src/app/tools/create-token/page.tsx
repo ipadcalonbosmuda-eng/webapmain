@@ -72,21 +72,74 @@ export default function CreateTokenPage() {
         owner: data.owner
       });
 
-      // Try createToken first, fallback to create
+      // Convert total supply to proper format (multiply by 10^18 for standard ERC20)
+      const totalSupplyWithDecimals = BigInt(data.totalSupply) * BigInt(10 ** 18);
+      
+      console.log('Formatted parameters:', {
+        name: data.name,
+        symbol: data.symbol,
+        totalSupplyOriginal: data.totalSupply,
+        totalSupplyWithDecimals: totalSupplyWithDecimals.toString(),
+        owner: data.owner
+      });
+
+      // Try different function signatures
+      let txHash;
+      
       try {
-        await writeContract({
+        // Try createToken with decimals parameter (name, symbol, totalSupply, decimals, owner)
+        console.log('Trying createToken with decimals...');
+        txHash = await writeContract({
           address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
           abi: tokenFactoryAbi,
           functionName: 'createToken',
-          args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
+          args: [data.name, data.symbol, totalSupplyWithDecimals, 18, data.owner as `0x${string}`],
         });
       } catch (firstError) {
-        console.log('createToken failed, trying create:', firstError);
-        await writeContract({
-          address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
-          abi: tokenFactoryAbi,
-          functionName: 'create',
-          args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
+        console.log('createToken with decimals failed:', firstError);
+        
+        try {
+          // Try createToken without decimals (name, symbol, totalSupply, owner)
+          console.log('Trying createToken without decimals...');
+          txHash = await writeContract({
+            address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+            abi: tokenFactoryAbi,
+            functionName: 'createToken',
+            args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
+          });
+        } catch (secondError) {
+          console.log('createToken without decimals failed:', secondError);
+          
+          try {
+            // Try create function (name, symbol, totalSupply, owner)
+            console.log('Trying create function...');
+            txHash = await writeContract({
+              address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+              abi: tokenFactoryAbi,
+              functionName: 'create',
+              args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
+            });
+          } catch (thirdError) {
+            console.log('create function failed:', thirdError);
+            
+            // Try with original totalSupply (no decimals multiplication)
+            console.log('Trying create with original totalSupply...');
+            txHash = await writeContract({
+              address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+              abi: tokenFactoryAbi,
+              functionName: 'create',
+              args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
+            });
+          }
+        }
+      }
+      
+      if (txHash) {
+        console.log('Transaction Hash:', txHash);
+        addToast({
+          type: 'success',
+          title: 'Token Creation Submitted',
+          description: `Transaction submitted. Hash: ${txHash}`,
         });
       }
     } catch (error) {
