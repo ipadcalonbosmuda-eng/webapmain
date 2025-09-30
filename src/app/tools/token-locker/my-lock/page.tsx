@@ -118,6 +118,9 @@ export default function MyLockPage() {
       }
 
       setRows(results);
+    } catch (err) {
+      console.error('Failed to load locks:', err);
+      setRows([]);
     } finally {
       setIsLoading(false);
     }
