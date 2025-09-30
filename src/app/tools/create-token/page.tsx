@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,7 +10,7 @@ import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
 import { explorerUrl } from '@/lib/utils';
 import tokenFactoryAbi from '@/lib/abis/tokenFactory.json';
-import { parseUnits, decodeEventLog, type Abi } from 'viem';
+import { parseUnits } from 'viem';
 
 const createTokenSchema = z.object({
   name: z.string().min(1, 'Token name is required'),
@@ -25,8 +25,6 @@ export default function CreateTokenPage() {
   const { address } = useAccount();
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const verifyInProgressRef = useRef<string | null>(null);
-  const [lastForm, setLastForm] = useState<CreateTokenForm | null>(null);
 
   const {
     register,
@@ -78,7 +76,6 @@ export default function CreateTokenPage() {
 
     setIsLoading(true);
     try {
-      setLastForm(data);
       console.log('🚀 Creating Token:', { name: data.name, symbol: data.symbol });
 
       // Convert total supply to wei using viem's parseUnits (no BigInt literals)
@@ -139,68 +136,6 @@ export default function CreateTokenPage() {
     }
   }, [isSuccess, hash, addToast]);
 
-  // Auto-verify created token on explorer using Etherscan-compatible API (server-side route)
-  useEffect(() => {
-    const run = async () => {
-      if (!isSuccess || !receipt || !lastForm) return;
-      try {
-        // Find TokenCreated event from receipt
-        let tokenAddress: string | null = null;
-        for (const log of receipt.logs ?? []) {
-          try {
-            const parsed = decodeEventLog({
-              abi: tokenFactoryAbi as unknown as Abi,
-              data: log.data as `0x${string}`,
-              topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
-            });
-            if (parsed.eventName === 'TokenCreated') {
-              const a = parsed.args;
-              if (Array.isArray(a)) {
-                const [token] = a as [`0x${string}`, `0x${string}`, string, string, bigint];
-                tokenAddress = token;
-              } else if (a && typeof a === 'object') {
-                const { token } = (a as unknown as { token?: `0x${string}` });
-                if (token) tokenAddress = token;
-              }
-              if (tokenAddress) break;
-            }
-          } catch {
-            // skip non-matching logs
-          }
-        }
-        if (!tokenAddress) return;
-
-        // prevent duplicate verify requests for the same token
-        if (verifyInProgressRef.current === tokenAddress) return;
-        verifyInProgressRef.current = tokenAddress;
-
-        addToast({ type: 'info', title: 'Verifying on Explorer', description: 'Submitting source code for verification...' });
-
-        // small delay to avoid burst after tx mined
-        await new Promise((r) => setTimeout(r, 1200));
-        const resp = await fetch('/api/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: tokenAddress,
-            name: lastForm.name,
-            symbol: lastForm.symbol,
-            totalSupplyWei: parseUnits(lastForm.totalSupply, 18).toString(),
-            owner: lastForm.owner,
-          }),
-        });
-        const json = await resp.json().catch(() => ({}));
-        if (resp.ok) {
-          addToast({ type: 'success', title: 'Verification Requested', description: json.message || 'Verification request submitted.' });
-        } else {
-          addToast({ type: 'error', title: 'Verification Failed', description: json.message || 'Unable to verify automatically.' });
-        }
-      } catch (err) {
-        console.error('Verify error', err);
-      }
-    };
-    run();
-  }, [isSuccess, receipt, lastForm, addToast]);
 
   return (
     <RequireWallet>
