@@ -158,7 +158,7 @@ export default function CreateTokenPage() {
                 const [token] = a as [`0x${string}`, `0x${string}`, string, string, bigint];
                 tokenAddress = token;
               } else if (a && typeof a === 'object') {
-                const token = (a as Record<string, unknown>).token as `0x${string}` | undefined;
+                const { token } = (a as unknown as { token?: `0x${string}` });
                 if (token) tokenAddress = token;
               }
               if (tokenAddress) break;
