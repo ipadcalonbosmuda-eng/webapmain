@@ -10,7 +10,7 @@ import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
 import { explorerUrl } from '@/lib/utils';
 import tokenFactoryAbi from '@/lib/abis/tokenFactory.json';
-import { parseUnits } from 'viem';
+import { parseUnits, decodeEventLog, type Abi } from 'viem';
 
 const createTokenSchema = z.object({
   name: z.string().min(1, 'Token name is required'),
@@ -25,6 +25,7 @@ export default function CreateTokenPage() {
   const { address } = useAccount();
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastForm, setLastForm] = useState<CreateTokenForm | null>(null);
 
   const {
     register,
@@ -40,7 +41,7 @@ export default function CreateTokenPage() {
   });
 
   const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({
     hash,
   });
 
@@ -76,6 +77,7 @@ export default function CreateTokenPage() {
 
     setIsLoading(true);
     try {
+      setLastForm(data);
       console.log('🚀 Creating Token:', { name: data.name, symbol: data.symbol });
 
       // Convert total supply to wei using viem's parseUnits (no BigInt literals)
@@ -135,6 +137,57 @@ export default function CreateTokenPage() {
       });
     }
   }, [isSuccess, hash]);
+
+  // Auto-verify created token on explorer using Etherscan-compatible API (server-side route)
+  useEffect(() => {
+    const run = async () => {
+      if (!isSuccess || !receipt || !lastForm) return;
+      try {
+        // Find TokenCreated event from receipt
+        let tokenAddress: string | null = null;
+        for (const log of receipt.logs ?? []) {
+          try {
+            const parsed = decodeEventLog({
+              abi: tokenFactoryAbi as unknown as Abi,
+              data: log.data as `0x${string}`,
+              topics: log.topics as `0x${string}`[],
+            });
+            if (parsed.eventName === 'TokenCreated') {
+              const args = parsed.args as any;
+              tokenAddress = args.token as string;
+              break;
+            }
+          } catch (_) {
+            // skip non-matching logs
+          }
+        }
+        if (!tokenAddress) return;
+
+        addToast({ type: 'info', title: 'Verifying on Explorer', description: 'Submitting source code for verification...' });
+
+        const resp = await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: tokenAddress,
+            name: lastForm.name,
+            symbol: lastForm.symbol,
+            totalSupplyWei: parseUnits(lastForm.totalSupply, 18).toString(),
+            owner: lastForm.owner,
+          }),
+        });
+        const json = await resp.json();
+        if (resp.ok) {
+          addToast({ type: 'success', title: 'Verification Requested', description: json.message || 'Verification request submitted.' });
+        } else {
+          addToast({ type: 'error', title: 'Verification Failed', description: json.message || 'Unable to verify automatically.' });
+        }
+      } catch (err) {
+        console.error('Verify error', err);
+      }
+    };
+    run();
+  }, [isSuccess, receipt, lastForm]);
 
   return (
     <RequireWallet>
