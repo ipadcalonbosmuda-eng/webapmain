@@ -472,7 +472,7 @@ export default function MultiSendPage() {
                       : 'text-blue-700'
                   }`}>
                     {process.env.NEXT_PUBLIC_MULTISEND 
-                      ? 'Multi-send contract is configured and ready to use. You can send tokens to multiple recipients in a single transaction.'
+                      ? 'You can send tokens to multiple recipients in a single transaction.'
                       : 'Multi-send requires a deployed multi-send contract on Plasma Mainnet Beta. Please contact support for contract deployment.'
                     }
                   </p>
