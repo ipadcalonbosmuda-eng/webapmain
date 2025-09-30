@@ -13,6 +13,9 @@ export function RequireWallet({ children }: RequireWalletProps) {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
 
+  // Add debug logging to understand connection state
+  console.log('RequireWallet state:', { isConnected, chainId, plasmaMainnetBetaId: plasmaMainnetBeta.id });
+
   if (!isConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -26,6 +29,9 @@ export function RequireWallet({ children }: RequireWalletProps) {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Connect Your Wallet</h2>
             <p className="text-gray-600">
               Connect your wallet to use tools on Plasma Mainnet Beta.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Debug: isConnected={String(isConnected)}, chainId={String(chainId)}
             </p>
           </div>
           <div className="flex justify-center">
