@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
@@ -136,7 +136,7 @@ export default function CreateTokenPage() {
         description: 'Your token has been deployed to the blockchain.',
       });
     }
-  }, [isSuccess, hash]);
+  }, [isSuccess, hash, addToast]);
 
   // Auto-verify created token on explorer using Etherscan-compatible API (server-side route)
   useEffect(() => {
@@ -153,11 +153,17 @@ export default function CreateTokenPage() {
               topics: log.topics as `0x${string}`[],
             });
             if (parsed.eventName === 'TokenCreated') {
-              const args = parsed.args as any;
+              const args = parsed.args as {
+                token: string;
+                owner?: string;
+                name?: string;
+                symbol?: string;
+                totalSupply?: bigint;
+              };
               tokenAddress = args.token as string;
               break;
             }
-          } catch (_) {
+          } catch {
             // skip non-matching logs
           }
         }
@@ -187,7 +193,7 @@ export default function CreateTokenPage() {
       }
     };
     run();
-  }, [isSuccess, receipt, lastForm]);
+  }, [isSuccess, receipt, lastForm, addToast]);
 
   return (
     <RequireWallet>

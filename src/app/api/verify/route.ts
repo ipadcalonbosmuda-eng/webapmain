@@ -52,8 +52,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: json?.result || 'Explorer error' }, { status: 500 });
     }
     return NextResponse.json({ message: json?.result || 'Verification submitted' });
-  } catch (e: any) {
-    return NextResponse.json({ message: e?.message || 'Unknown error' }, { status: 500 });
+  } catch (e) {
+    const err = e as Error;
+    return NextResponse.json({ message: err.message || 'Unknown error' }, { status: 500 });
   }
 }
 
