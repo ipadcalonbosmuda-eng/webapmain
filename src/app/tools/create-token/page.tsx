@@ -126,13 +126,15 @@ export default function CreateTokenPage() {
     }
   }, [address, setValue]);
 
-  if (isSuccess && hash) {
-    addToast({
-      type: 'success',
-      title: 'Token Created Successfully!',
-      description: 'Your token has been deployed to the blockchain.',
-    });
-  }
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast({
+        type: 'success',
+        title: 'Token Created Successfully!',
+        description: 'Your token has been deployed to the blockchain.',
+      });
+    }
+  }, [isSuccess, hash]);
 
   return (
     <RequireWallet>
