@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -55,14 +55,16 @@ export default function CreateTokenPage() {
     });
   }, []); // Empty dependency array = run once on mount
 
-  const addToast = (toast: ToastData) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => [...prev, { ...toast, id, onClose: () => removeToast(id) }]);
-  };
-
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  }, []);
+
+  const addToast = useCallback((toast: ToastData) => {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 11);
+    setToasts((prev) => [...prev, { ...toast, id, onClose: () => removeToast(id) }]);
+  }, [removeToast]);
 
   const onSubmit = async (data: CreateTokenForm) => {
     if (!process.env.NEXT_PUBLIC_TOKEN_FACTORY) {
@@ -126,13 +128,16 @@ export default function CreateTokenPage() {
     }
   }, [address, setValue]);
 
+  // Ensure we only show the success toast once per transaction hash
+  const lastNotifiedHashRef = useRef<string | null>(null);
   useEffect(() => {
-    if (isSuccess && hash) {
+    if (isSuccess && hash && lastNotifiedHashRef.current !== hash) {
       addToast({
         type: 'success',
         title: 'Token Created Successfully!',
         description: 'Your token has been deployed to the blockchain.',
       });
+      lastNotifiedHashRef.current = hash;
     }
   }, [isSuccess, hash, addToast]);
 
