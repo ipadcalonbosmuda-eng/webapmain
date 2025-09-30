@@ -123,7 +123,34 @@ export default function TokenLockerPage() {
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
       }
-      setApprovedForAmount(true);
+      // Verify on-chain allowance after approval confirmation
+      if (publicClient) {
+        try {
+          const newAllowance = (await publicClient.readContract({
+            address: tokenAddress as `0x${string}`,
+            abi: [
+              {
+                inputs: [
+                  { name: 'owner', type: 'address' },
+                  { name: 'spender', type: 'address' },
+                ],
+                name: 'allowance',
+                outputs: [{ name: '', type: 'uint256' }],
+                stateMutability: 'view',
+                type: 'function',
+              },
+            ],
+            functionName: 'allowance',
+            args: [address as `0x${string}`, process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`],
+          })) as unknown as bigint;
+          setApprovedForAmount(newAllowance >= amountInUnits);
+        } catch (_) {
+          // If read fails, fall back to not approved
+          setApprovedForAmount(false);
+        }
+      } else {
+        setApprovedForAmount(true);
+      }
       addToast({
         type: 'success',
         title: 'Approved Successfully',
@@ -131,6 +158,7 @@ export default function TokenLockerPage() {
       });
     } catch (error) {
       console.error('Error approving token:', error);
+      setApprovedForAmount(false);
       addToast({
         type: 'error',
         title: 'Approval Failed',
@@ -179,11 +207,10 @@ export default function TokenLockerPage() {
     }
   };
 
-  // Compute whether we still need approval (respects local approved flag)
+  // Compute whether we still need approval (uses on-chain allowance; local flag prevents flicker post-approval)
   const amountInUnitsForCheck = amount ? parseUnits(amount, decimals) : BigInt(0);
-  const needsApprovalCheck = !!(
-    amount && tokenAddress && !approvedForAmount && (typeof allowance !== 'bigint' || allowance < amountInUnitsForCheck)
-  );
+  const onChainNeedsApproval = typeof allowance !== 'bigint' || allowance < amountInUnitsForCheck;
+  const needsApprovalCheck = !!(amount && tokenAddress && (onChainNeedsApproval && !approvedForAmount));
 
   // One-time success toast per transaction
   const lastNotifiedHashRef = useRef<string | null>(null);
