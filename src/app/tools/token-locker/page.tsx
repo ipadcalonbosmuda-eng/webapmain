@@ -38,6 +38,7 @@ export default function TokenLockerPage() {
   const publicClient = usePublicClient();
   const [isApproving, setIsApproving] = useState(false);
   const [approvedForAmount, setApprovedForAmount] = useState(false);
+  const [lastTxType, setLastTxType] = useState<'approve' | 'lock' | null>(null);
 
   const tokenAddress = watch('tokenAddress');
   const amount = watch('amount');
@@ -102,6 +103,7 @@ export default function TokenLockerPage() {
     if (!tokenAddress || !amount || !process.env.NEXT_PUBLIC_TOKEN_LOCKER) return;
     try {
       setIsApproving(true);
+      setLastTxType('approve');
       const amountInUnits = parseUnits(amount, decimals);
       const approveHash = await writeContract({
         address: tokenAddress as `0x${string}`,
@@ -183,6 +185,7 @@ export default function TokenLockerPage() {
     try {
       const lockUntil = Math.floor(new Date(data.lockUntil).getTime() / 1000);
       const amountInUnits = parseUnits(data.amount, decimals);
+      setLastTxType('lock');
 
       // Perform the lock (this sets hash for the success UI)
       await writeContract({
@@ -215,7 +218,7 @@ export default function TokenLockerPage() {
   // One-time success toast per transaction
   const lastNotifiedHashRef = useRef<string | null>(null);
   useEffect(() => {
-    if (isSuccess && hash && lastNotifiedHashRef.current !== hash) {
+    if (isSuccess && hash && lastTxType === 'lock' && lastNotifiedHashRef.current !== hash) {
       addToast({
         type: 'success',
         title: 'Token Locked Successfully!',
@@ -223,7 +226,7 @@ export default function TokenLockerPage() {
       });
       lastNotifiedHashRef.current = hash;
     }
-  }, [isSuccess, hash, addToast]);
+  }, [isSuccess, hash, lastTxType, addToast]);
 
   return (
     <RequireWallet>
