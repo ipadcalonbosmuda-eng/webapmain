@@ -54,7 +54,7 @@ export function Toast({ id, type, title, description, duration = 5000, onClose }
   return (
     <div
       className={cn(
-        'fixed top-4 right-4 z-50 max-w-sm w-full bg-white border rounded-lg shadow-lg transform transition-all duration-300',
+        'relative max-w-sm w-full bg-white border rounded-lg shadow-lg transform transition-all duration-300',
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0',
         colors[type]
       )}
@@ -72,8 +72,9 @@ export function Toast({ id, type, title, description, duration = 5000, onClose }
           </div>
           <div className="ml-4 flex-shrink-0 flex">
             <button
-              className="rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="rounded-md inline-flex text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 p-1 hover:bg-gray-100 transition-colors"
               onClick={handleClose}
+              type="button"
             >
               <X className="h-4 w-4" />
             </button>
@@ -86,7 +87,7 @@ export function Toast({ id, type, title, description, duration = 5000, onClose }
 
 export function ToastContainer({ toasts, onClose }: { toasts: ToastProps[]; onClose: (id: string) => void }) {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
       {toasts.map((toast) => (
         <Toast key={toast.id} {...toast} onClose={onClose} />
       ))}

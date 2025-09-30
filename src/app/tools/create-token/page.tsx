@@ -57,7 +57,7 @@ export default function CreateTokenPage() {
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => [...prev, { ...toast, id, onClose: removeToast }]);
+    setToasts((prev) => [...prev, { ...toast, id, onClose: () => removeToast(id) }]);
   };
 
   const removeToast = (id: string) => {
