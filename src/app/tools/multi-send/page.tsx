@@ -459,13 +459,6 @@ export default function MultiSendPage() {
                     ? 'bg-green-50 border-green-200' 
                     : 'bg-blue-50 border-blue-200'
                 }`}>
-                  <h4 className={`text-sm font-semibold mb-2 ${
-                    process.env.NEXT_PUBLIC_MULTISEND 
-                      ? 'text-green-800' 
-                      : 'text-blue-800'
-                  }`}>
-                    {process.env.NEXT_PUBLIC_MULTISEND ? 'Contract Ready' : 'Contract Required'}
-                  </h4>
                   <p className={`text-sm ${
                     process.env.NEXT_PUBLIC_MULTISEND 
                       ? 'text-green-700' 
