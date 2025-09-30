@@ -84,62 +84,69 @@ export default function CreateTokenPage() {
       });
 
       // Try different function signatures
-      let txHash;
+      let success = false;
       
       try {
         // Try createToken with decimals parameter (name, symbol, totalSupply, decimals, owner)
         console.log('Trying createToken with decimals...');
-        txHash = await writeContract({
+        await writeContract({
           address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
           abi: tokenFactoryAbi,
           functionName: 'createToken',
           args: [data.name, data.symbol, totalSupplyWithDecimals, 18, data.owner as `0x${string}`],
         });
+        success = true;
+        console.log('✅ createToken with decimals succeeded');
       } catch (firstError) {
-        console.log('createToken with decimals failed:', firstError);
+        console.log('❌ createToken with decimals failed:', firstError);
         
         try {
           // Try createToken without decimals (name, symbol, totalSupply, owner)
           console.log('Trying createToken without decimals...');
-          txHash = await writeContract({
+          await writeContract({
             address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
             abi: tokenFactoryAbi,
             functionName: 'createToken',
             args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
           });
+          success = true;
+          console.log('✅ createToken without decimals succeeded');
         } catch (secondError) {
-          console.log('createToken without decimals failed:', secondError);
+          console.log('❌ createToken without decimals failed:', secondError);
           
           try {
             // Try create function (name, symbol, totalSupply, owner)
             console.log('Trying create function...');
-            txHash = await writeContract({
+            await writeContract({
               address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
               abi: tokenFactoryAbi,
               functionName: 'create',
               args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
             });
+            success = true;
+            console.log('✅ create function succeeded');
           } catch (thirdError) {
-            console.log('create function failed:', thirdError);
+            console.log('❌ create function failed:', thirdError);
             
             // Try with original totalSupply (no decimals multiplication)
             console.log('Trying create with original totalSupply...');
-            txHash = await writeContract({
+            await writeContract({
               address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
               abi: tokenFactoryAbi,
               functionName: 'create',
               args: [data.name, data.symbol, BigInt(data.totalSupply), data.owner as `0x${string}`],
             });
+            success = true;
+            console.log('✅ create with original totalSupply succeeded');
           }
         }
       }
       
-      if (txHash) {
-        console.log('Transaction Hash:', txHash);
+      if (success) {
         addToast({
           type: 'success',
           title: 'Token Creation Submitted',
-          description: `Transaction submitted. Hash: ${txHash}`,
+          description: 'Transaction has been submitted to the blockchain.',
         });
       }
     } catch (error) {
