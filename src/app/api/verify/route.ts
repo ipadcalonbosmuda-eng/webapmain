@@ -77,14 +77,22 @@ export async function POST(req: NextRequest) {
       return { ok: false as const, message: 'Verification pending. Try again later.' };
     }
 
+    // Helper to detect rate limit text
+    const isRateLimited = (m?: string) => (m || '').toLowerCase().includes('limit');
+
+    // Try without optimizer with a few backoff retries when rate limited
     let attempt = await verifyOnce('0');
-    if (!attempt.ok && (attempt.message || '').toLowerCase().includes('limit')) {
-      // rate limited
-      return NextResponse.json({ message: attempt.message }, { status: 429 });
+    for (let i = 0; !attempt.ok && isRateLimited(attempt.message) && i < 2; i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      attempt = await verifyOnce('0');
     }
     if (!attempt.ok) {
       // retry with optimizer enabled
       attempt = await verifyOnce('1');
+      for (let i = 0; !attempt.ok && isRateLimited(attempt.message) && i < 2; i++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        attempt = await verifyOnce('1');
+      }
     }
     if (attempt.ok) return NextResponse.json({ message: attempt.message });
     return NextResponse.json({ message: attempt.message }, { status: 500 });
