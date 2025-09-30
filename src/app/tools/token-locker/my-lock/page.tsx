@@ -28,6 +28,21 @@ export default function MyLockPage() {
 
   const locker = process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}` | undefined;
 
+  const safeFormat = (value?: bigint, decimals?: number, symbol?: string) => {
+    try {
+      const v = typeof value === 'bigint' ? value : BigInt(0);
+      const d = typeof decimals === 'number' && Number.isFinite(decimals) ? decimals : 18;
+      const s = symbol || '';
+      return `${formatUnits(v, d)} ${s}`.trim();
+    } catch {
+      try {
+        return `${String(value ?? BigInt(0))} ${symbol || ''}`.trim();
+      } catch {
+        return '0';
+      }
+    }
+  };
+
   const fetchData = async () => {
     if (!publicClient || !locker || !address) {
       setRows([]);
@@ -184,17 +199,17 @@ export default function MyLockPage() {
                       <td className="py-3 pr-4 font-mono">{row?.lockId ? String(row.lockId) : '-'}</td>
                       <td className="py-3 pr-4 font-mono break-all">{row?.token || '-'}</td>
                       <td className="py-3 pr-4">
-                        {row ? `${formatUnits(row.amount - row.withdrawn, row.decimals)} ${row.symbol || ''}` : '-'}
+                        {row ? safeFormat((row.amount ?? BigInt(0)) - (row.withdrawn ?? BigInt(0)), row.decimals, row.symbol) : '-'}
                       </td>
                       <td className="py-3 pr-4">
-                        {row ? `${formatUnits(row.withdrawn, row.decimals)} ${row.symbol || ''}` : '-'}
+                        {row ? safeFormat(row.withdrawn, row.decimals, row.symbol) : '-'}
                       </td>
                       <td className="py-3 pr-4">{new Date(Number(row?.lockUntil ?? BigInt(0)) * 1000).toLocaleString()}</td>
-                      <td className="py-3 pr-4">{row ? `${formatUnits(row.withdrawable, row.decimals)} ${row.symbol || ''}` : '-'}</td>
+                      <td className="py-3 pr-4">{row ? safeFormat(row.withdrawable, row.decimals, row.symbol) : '-'}</td>
                       <td className="py-3 pr-4">
                         <button
                           className="btn-primary px-3 py-1"
-                          disabled={row.withdrawable === BigInt(0) || isPending || isConfirming}
+                          disabled={!row || row.withdrawable === BigInt(0) || isPending || isConfirming}
                           onClick={() => onWithdraw(row.lockId)}
                         >
                           {selected === row.lockId && (isPending || isConfirming) ? 'Withdrawing...' : 'Withdraw'}
