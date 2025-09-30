@@ -103,9 +103,9 @@ export default function MyLockPage() {
             ) : rows.length === 0 ? (
               <p className="text-gray-600">No locks found for your address.</p>
             ) : (
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm text-gray-900">
                 <thead>
-                  <tr className="text-left text-gray-500">
+                  <tr className="text-left text-gray-700">
                     <th className="py-2 pr-4">Lock ID</th>
                     <th className="py-2 pr-4">Token</th>
                     <th className="py-2 pr-4">Amount</th>
