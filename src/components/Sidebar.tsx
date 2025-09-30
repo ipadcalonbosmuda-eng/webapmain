@@ -14,10 +14,20 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
-const navigation = [
+type NavChild = { name: string; href: string };
+type NavLink = { name: string; href: string; icon: LucideIcon };
+type NavSection = { name: string; icon: LucideIcon; children: NavChild[] };
+type NavItem = NavLink | NavSection;
+
+function isNavSection(item: NavItem): item is NavSection {
+  return 'children' in item;
+}
+
+const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Token Creation', href: '/tools/create-token', icon: Coins },
   {
@@ -73,7 +83,7 @@ export function Sidebar() {
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <nav className="flex-1 px-2 space-y-1">
               {navigation.map((item) => {
-                if ('children' in item && item.children) {
+                if (isNavSection(item)) {
                   const isSectionOpen = !!openSections[item.name];
                   const isSectionActive = item.children.some((child) => pathname.startsWith(child.href));
                   return (
@@ -126,11 +136,13 @@ export function Sidebar() {
                   );
                 }
 
-                const isActive = pathname === (item as any).href;
+                // Narrow to simple link item
+                const link = item as NavLink;
+                const isActive = pathname === link.href;
                 return (
                   <Link
-                    key={item.name}
-                    href={(item as any).href}
+                    key={link.name}
+                    href={link.href}
                     className={cn(
                       'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                       isActive
@@ -139,13 +151,13 @@ export function Sidebar() {
                     )}
                     onClick={() => setIsOpen(false)}
                   >
-                    <item.icon
+                    <link.icon
                       className={cn(
                         'mr-3 h-5 w-5 flex-shrink-0',
                         isActive ? 'text-black' : 'text-gray-400 group-hover:text-gray-500'
                       )}
                     />
-                    {item.name}
+                    {link.name}
                   </Link>
                 );
               })}
