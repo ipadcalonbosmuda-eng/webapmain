@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import tokenLockerAbi from "@/lib/abis/tokenLocker.json";
-import { formatUnits } from "viem";
+import type { Abi } from "viem";
 
 export type MyLock = {
   lockId: bigint;
@@ -39,42 +39,41 @@ export function useMyLocks() {
       try {
         const lockIds = (await client.readContract({
           address: CONTRACT_ADDRESS,
-          abi: tokenLockerAbi as any,
+          abi: tokenLockerAbi as unknown as Abi,
           functionName: "locksOf",
           args: [address],
         })) as bigint[];
 
         const result: MyLock[] = [];
         for (const id of lockIds) {
-          const [info, w, dec, sym] = await Promise.all([
+          type LockInfo = { token: `0x${string}`; amount: bigint; withdrawn: bigint; lockUntil: bigint; owner: `0x${string}` };
+          const info = (await client.readContract({
+            address: CONTRACT_ADDRESS,
+            abi: tokenLockerAbi as unknown as Abi,
+            functionName: "locks",
+            args: [id],
+          })) as LockInfo;
+
+          const [w, dec, sym] = await Promise.all([
             client.readContract({
               address: CONTRACT_ADDRESS,
-              abi: tokenLockerAbi as any,
-              functionName: "locks",
-              args: [id],
-            }) as Promise<{ token: `0x${string}`; amount: bigint; withdrawn: bigint; lockUntil: bigint; owner: `0x${string}` }>,
-            client.readContract({
-              address: CONTRACT_ADDRESS,
-              abi: tokenLockerAbi as any,
+              abi: tokenLockerAbi as unknown as Abi,
               functionName: "withdrawable",
               args: [id],
             }) as Promise<bigint>,
             client.readContract({
-              address: undefined as any,
+              address: info?.token as `0x${string}`,
               abi: [
                 { inputs: [], name: "decimals", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
-              ],
+              ] as unknown as Abi,
               functionName: "decimals",
-              // viem requires address typed; we cast since it's dynamic
-              address: info?.token as any,
             }) as Promise<number>,
             client.readContract({
-              address: undefined as any,
+              address: info?.token as `0x${string}`,
               abi: [
                 { inputs: [], name: "symbol", outputs: [{ name: "", type: "string" }], stateMutability: "view", type: "function" },
-              ],
+              ] as unknown as Abi,
               functionName: "symbol",
-              address: info?.token as any,
             }) as Promise<string>,
           ]);
 
@@ -91,8 +90,8 @@ export function useMyLocks() {
           });
         }
         if (!cancelled) setLocks(result);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || String(e));
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
