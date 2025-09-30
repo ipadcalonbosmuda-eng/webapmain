@@ -243,33 +243,33 @@ export default function TokenLockerPage() {
 
                   {/* Cliff removed: simple timelock */}
 
-                  {needsApprovalCheck && (
-                    <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-yellow-800 mb-3">Approve the locker to spend your tokens first.</p>
-                      <button
-                        type="button"
-                        onClick={handleApprove}
-                        disabled={isApproving || isPending || isConfirming}
-                        className="btn-primary"
-                      >
-                        {isApproving ? 'Approving...' : 'Approve Token Spending'}
-                      </button>
-                    </div>
-                  )}
+                  {/* Single button flow: first Approve, then Lock */}
 
                   <div className="md:col-span-2 pt-2">
                     <button
-                      type="submit"
-                      disabled={isLoading || isPending || isConfirming || needsApprovalCheck}
+                      type={needsApprovalCheck ? 'button' : 'submit'}
+                      onClick={needsApprovalCheck ? handleApprove : undefined}
+                      disabled={needsApprovalCheck ? (isApproving || isPending || isConfirming) : (isLoading || isPending || isConfirming)}
                       className="btn-primary w-full py-3 text-lg"
                     >
-                      {isLoading || isPending || isConfirming ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
-                          {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
-                        </div>
+                      {needsApprovalCheck ? (
+                        isApproving || isPending || isConfirming ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                            {isApproving ? 'Approving...' : isPending ? 'Confirming...' : 'Processing...'}
+                          </div>
+                        ) : (
+                          'Approve Token Spending'
+                        )
                       ) : (
-                        'Lock Token'
+                        isLoading || isPending || isConfirming ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                            {isLoading ? 'Preparing...' : isPending ? 'Confirming...' : 'Processing...'}
+                          </div>
+                        ) : (
+                          'Lock Token'
+                        )
                       )}
                     </button>
                   </div>
