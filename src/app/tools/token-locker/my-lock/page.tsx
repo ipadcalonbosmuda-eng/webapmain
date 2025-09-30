@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { explorerUrl } from '@/lib/utils';
 import { formatUnits } from 'viem';
+import { useMyLocks } from './useMyLocks';
 
 type LockRow = {
   lockId: bigint;
@@ -19,14 +20,14 @@ type LockRow = {
 
 export default function MyLockPage() {
   const { address } = useAccount();
-  const publicClient = usePublicClient();
   const [rows, setRows] = useState<LockRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selected, setSelected] = useState<bigint | null>(null);
   const { writeContract, data: txHash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const locker = process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}` | undefined;
+  const locker = (process.env.NEXT_PUBLIC_TOKEN_LOCKER || '0xEb929E58B57410DC4f22cCDBaEE142Cb441B576C') as `0x${string}`;
+  const { locks, loading } = useMyLocks();
 
   const safeFormat = (value?: bigint, decimals?: number, symbol?: string) => {
     try {
@@ -44,98 +45,19 @@ export default function MyLockPage() {
   };
 
   const fetchData = async () => {
-    if (!publicClient || !locker || !address) {
-      setRows([]);
-      return;
-    }
     setIsLoading(true);
     try {
-      const lockIds = await publicClient.readContract({
-        address: locker,
-        abi: [
-          { inputs: [{ name: 'owner', type: 'address' }], name: 'locksOf', outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view', type: 'function' },
-        ],
-        functionName: 'locksOf',
-        args: [address],
-      }) as bigint[];
-
-      const results: LockRow[] = [];
-      for (const id of lockIds) {
-        const [info, wdr] = await Promise.all([
-          publicClient.readContract({
-            address: locker,
-            abi: [
-              {
-                inputs: [{ name: '', type: 'uint256' }],
-                name: 'locks',
-                outputs: [
-                  { name: 'token', type: 'address' },
-                  { name: 'amount', type: 'uint256' },
-                  { name: 'withdrawn', type: 'uint256' },
-                  { name: 'lockUntil', type: 'uint256' },
-                  { name: 'owner', type: 'address' },
-                ],
-                stateMutability: 'view',
-                type: 'function',
-              },
-            ],
-            functionName: 'locks',
-            args: [id],
-          }) as unknown as { token: `0x${string}`; amount: bigint; withdrawn: bigint; lockUntil: bigint; owner: `0x${string}` },
-          publicClient.readContract({
-            address: locker,
-            abi: [
-              { inputs: [{ name: 'lockId', type: 'uint256' }], name: 'withdrawable', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
-            ],
-            functionName: 'withdrawable',
-            args: [id],
-          }) as Promise<bigint>,
-        ]);
-
-        // Fetch ERC20 decimals and symbol for display
-        let decimals = 18;
-        let symbol = '';
-        try {
-          const [dec, sym] = await Promise.all([
-            publicClient.readContract({
-              address: info.token,
-              abi: [
-                { inputs: [], name: 'decimals', outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view', type: 'function' },
-              ],
-              functionName: 'decimals',
-              args: [],
-            }) as Promise<number>,
-            publicClient.readContract({
-              address: info.token,
-              abi: [
-                { inputs: [], name: 'symbol', outputs: [{ name: '', type: 'string' }], stateMutability: 'view', type: 'function' },
-              ],
-              functionName: 'symbol',
-              args: [],
-            }) as Promise<string>,
-          ]);
-          decimals = Number(dec ?? 18);
-          symbol = sym ?? '';
-        } catch {
-          // ignore
-        }
-
-        results.push({
-          lockId: id,
-          token: info.token,
-          amount: info.amount,
-          withdrawn: info.withdrawn,
-          lockUntil: info.lockUntil,
-          withdrawable: wdr,
-          decimals,
-          symbol,
-        });
-      }
-
+      const results: LockRow[] = (locks || []).map((l) => ({
+        lockId: l.lockId,
+        token: l.token,
+        amount: l.amount,
+        withdrawn: l.withdrawn,
+        lockUntil: l.unlockAt,
+        withdrawable: l.withdrawable,
+        decimals: l.decimals,
+        symbol: l.symbol,
+      }));
       setRows(results);
-    } catch (err) {
-      console.error('Failed to load locks:', err);
-      setRows([]);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +66,7 @@ export default function MyLockPage() {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, publicClient, locker]);
+  }, [locks]);
 
   const onWithdraw = async (lockId: bigint) => {
     if (!locker) return;

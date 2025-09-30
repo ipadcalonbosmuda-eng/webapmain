@@ -18,6 +18,14 @@ export function explorerUrl(address: string, txHash?: string): string {
   return `${baseUrl}/address/${address}`;
 }
 
+// Helper: format chain config for viem/wagmi if needed elsewhere
+export const PLASMA_CHAIN = {
+  id: 9745,
+  name: 'Plasma Mainnet Beta',
+  rpcUrl: 'https://rpc.plasma.to',
+  explorer: 'https://plasmascan.to',
+};
+
 export function parseCSV(csvText: string): Array<{ address: string; amount: string }> {
   const lines = csvText.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
