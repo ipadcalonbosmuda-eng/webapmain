@@ -90,12 +90,33 @@ export function useMyLocks() {
         const result: MyLock[] = [];
         for (const id of lockIds) {
           type LockInfo = { token: `0x${string}`; amount: bigint; withdrawn: bigint; lockUntil: bigint; owner: `0x${string}` };
-          const info = (await client.readContract({
+          const infoRaw = (await client.readContract({
             address: CONTRACT_ADDRESS,
             abi,
             functionName: "locks",
             args: [id],
-          })) as LockInfo;
+          })) as unknown;
+          // Handle tuple or object return shape
+          const info: LockInfo = ((): LockInfo => {
+            if (infoRaw && typeof infoRaw === 'object' && 'owner' in (infoRaw as any)) {
+              const obj = infoRaw as Record<string, unknown>;
+              return {
+                token: obj.token as `0x${string}`,
+                amount: obj.amount as bigint,
+                withdrawn: obj.withdrawn as bigint,
+                lockUntil: obj.lockUntil as bigint,
+                owner: obj.owner as `0x${string}`,
+              };
+            }
+            const [token, amount, withdrawn, lockUntil, owner] = infoRaw as readonly [
+              `0x${string}`,
+              bigint,
+              bigint,
+              bigint,
+              `0x${string}`
+            ];
+            return { token, amount, withdrawn, lockUntil, owner };
+          })();
           console.log('[MyLock] lock', String(id), 'owner', info.owner);
 
           // Skip locks that don't belong to the current user (in case of fallback scan)
