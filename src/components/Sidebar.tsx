@@ -11,15 +11,23 @@ import {
   Calendar, 
   Send,
   Menu,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Token Creation', href: '/tools/create-token', icon: Coins },
-  { name: 'Token Locker', href: '/tools/token-locker', icon: Lock },
+  {
+    name: 'Token Locker',
+    icon: Lock,
+    children: [
+      { name: 'Token Lock', href: '/tools/token-locker' },
+      { name: 'My Lock', href: '/tools/token-locker/my-lock' },
+    ],
+  },
   { name: 'Liquidity Locker', href: '/tools/liquidity-locker', icon: Shield },
   { name: 'Token Vesting', href: '/tools/vesting', icon: Calendar },
   { name: 'Multi-Send', href: '/tools/multi-send', icon: Send },
@@ -28,6 +36,23 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  // Ensure the section containing the active route is expanded by default
+  useEffect(() => {
+    navigation.forEach((item) => {
+      if ('children' in item && item.children) {
+        const anyActive = item.children.some((child) => pathname.startsWith(child.href));
+        if (anyActive) {
+          setOpenSections((prev) => ({ ...prev, [item.name]: true }));
+        }
+      }
+    });
+  }, [pathname]);
+
+  const toggleSection = (name: string) => {
+    setOpenSections((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
 
   return (
     <>
@@ -48,11 +73,64 @@ export function Sidebar() {
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <nav className="flex-1 px-2 space-y-1">
               {navigation.map((item) => {
-                const isActive = pathname === item.href;
+                if ('children' in item && item.children) {
+                  const isSectionOpen = !!openSections[item.name];
+                  const isSectionActive = item.children.some((child) => pathname.startsWith(child.href));
+                  return (
+                    <div key={item.name} className="space-y-1">
+                      <button
+                        type="button"
+                        className={cn(
+                          'w-full flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
+                          isSectionActive ? 'bg-[#00FF85] text-black' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        )}
+                        onClick={() => toggleSection(item.name)}
+                      >
+                        <item.icon
+                          className={cn(
+                            'mr-3 h-5 w-5 flex-shrink-0',
+                            isSectionActive ? 'text-black' : 'text-gray-400'
+                          )}
+                        />
+                        <span className="flex-1 text-left">{item.name}</span>
+                        <ChevronDown
+                          className={cn(
+                            'h-4 w-4 transition-transform',
+                            isSectionOpen ? 'rotate-180' : 'rotate-0',
+                            isSectionActive ? 'text-black' : 'text-gray-400'
+                          )}
+                        />
+                      </button>
+                      {isSectionOpen && (
+                        <div className="pl-9 space-y-1">
+                          {item.children.map((child) => {
+                            const isActive = pathname.startsWith(child.href);
+                            return (
+                              <Link
+                                key={child.name}
+                                href={child.href}
+                                className={cn(
+                                  'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
+                                  isActive ? 'bg-[#00FF85] text-black' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                )}
+                                onClick={() => setIsOpen(false)}
+                              >
+                                <span className="mr-3 h-5 w-5" />
+                                {child.name}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                const isActive = pathname === (item as any).href;
                 return (
                   <Link
                     key={item.name}
-                    href={item.href}
+                    href={(item as any).href}
                     className={cn(
                       'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                       isActive
