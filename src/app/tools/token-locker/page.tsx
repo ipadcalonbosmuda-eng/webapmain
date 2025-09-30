@@ -62,11 +62,12 @@ export default function TokenLockerPage() {
 
   // Reset local approval flag when token/amount changes
   useEffect(() => {
+    // Reset approval state when user changes token or amount
     setApprovedForAmount(false);
   }, [tokenAddress, amount]);
 
   // Check allowance
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: tokenAddress as `0x${string}`,
     abi: [
       {
@@ -86,6 +87,14 @@ export default function TokenLockerPage() {
       enabled: !!address && !!tokenAddress && !!process.env.NEXT_PUBLIC_TOKEN_LOCKER,
     },
   });
+
+  // When on-chain allowance becomes sufficient, mark approved to avoid double-approve
+  useEffect(() => {
+    const required = amount ? parseUnits(amount, decimals) : BigInt(0);
+    if (typeof allowance === 'bigint' && allowance >= required) {
+      setApprovedForAmount(true);
+    }
+  }, [allowance, amount, decimals]);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -125,32 +134,17 @@ export default function TokenLockerPage() {
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
       }
-      // Verify on-chain allowance after approval confirmation
-      if (publicClient) {
-        try {
-          const newAllowance = (await publicClient.readContract({
-            address: tokenAddress as `0x${string}`,
-            abi: [
-              {
-                inputs: [
-                  { name: 'owner', type: 'address' },
-                  { name: 'spender', type: 'address' },
-                ],
-                name: 'allowance',
-                outputs: [{ name: '', type: 'uint256' }],
-                stateMutability: 'view',
-                type: 'function',
-              },
-            ],
-            functionName: 'allowance',
-            args: [address as `0x${string}`, process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`],
-          })) as unknown as bigint;
-          setApprovedForAmount(newAllowance >= amountInUnits);
-        } catch (_) {
-          // If read fails, fall back to not approved
-          setApprovedForAmount(false);
+
+      // Try to refetch allowance and determine state. If refetch missing or fails, fallback to optimistic true.
+      try {
+        const res = await refetchAllowance?.();
+        const latestAllowance = (res?.data ?? allowance) as unknown as bigint | undefined;
+        if (typeof latestAllowance === 'bigint') {
+          setApprovedForAmount(latestAllowance >= amountInUnits);
+        } else {
+          setApprovedForAmount(true);
         }
-      } else {
+      } catch {
         setApprovedForAmount(true);
       }
       addToast({
