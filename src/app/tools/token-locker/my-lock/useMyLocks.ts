@@ -88,34 +88,52 @@ export function useMyLocks() {
             continue;
           }
 
-          const [w, dec, sym] = await Promise.all([
-            client.readContract({
+          // Read withdrawable/metadata defensively; do not fail whole list if one read throws
+          let w: bigint = BigInt(0);
+          try {
+            w = (await client.readContract({
               address: CONTRACT_ADDRESS,
               abi,
               functionName: "withdrawable",
               args: [id],
-            }) as Promise<bigint>,
-            client.readContract({
+            })) as bigint;
+          } catch {
+            w = BigInt(0);
+          }
+
+          let decNum = 18;
+          try {
+            const dec = (await client.readContract({
               address: info?.token as `0x${string}`,
               abi: [
                 { inputs: [], name: "decimals", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
               ] as unknown as Abi,
               functionName: "decimals",
-            }) as Promise<number>,
-            client.readContract({
+            })) as number;
+            decNum = Number(dec ?? 18);
+          } catch {
+            decNum = 18;
+          }
+
+          let symStr = "";
+          try {
+            const sym = (await client.readContract({
               address: info?.token as `0x${string}`,
               abi: [
                 { inputs: [], name: "symbol", outputs: [{ name: "", type: "string" }], stateMutability: "view", type: "function" },
               ] as unknown as Abi,
               functionName: "symbol",
-            }) as Promise<string>,
-          ]);
+            })) as string;
+            symStr = sym ?? "";
+          } catch {
+            symStr = "";
+          }
 
           result.push({
             lockId: id,
             token: info.token,
-            symbol: sym || "",
-            decimals: Number(dec ?? 18),
+            symbol: symStr,
+            decimals: decNum,
             amount: info.amount,
             withdrawn: info.withdrawn,
             unlockAt: info.lockUntil,
