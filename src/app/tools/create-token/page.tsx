@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
@@ -41,6 +41,14 @@ export default function CreateTokenPage() {
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
+  });
+
+  // Add contract diagnostic info
+  const contractAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY;
+  console.log('🔍 Contract Diagnostic:', {
+    address: contractAddress,
+    addressValid: contractAddress?.startsWith('0x') && contractAddress.length === 42,
+    timestamp: new Date().toISOString()
   });
 
   const addToast = (toast: ToastData) => {
@@ -163,6 +171,13 @@ export default function CreateTokenPage() {
           type: 'success',
           title: 'Token Creation Submitted',
           description: 'Transaction has been submitted to the blockchain.',
+        });
+      } else {
+        // All attempts failed
+        addToast({
+          type: 'error',
+          title: 'All Attempts Failed',
+          description: 'Contract execution failed. Try with different symbol/name or check if contract is properly deployed.',
         });
       }
     } catch (error) {
