@@ -57,8 +57,9 @@ export async function POST(req: NextRequest) {
       // json.result should be a GUID
       const guid = json.result as string;
       // poll
-      for (let i = 0; i < 8; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
+      for (let i = 0; i < 6; i++) {
+        // throttle to respect free tier limits (<= 2 req/sec)
+        await new Promise((r) => setTimeout(r, 3000));
         const qs = new URLSearchParams();
         qs.set('module', 'contract');
         qs.set('action', 'checkverifystatus');
@@ -77,6 +78,10 @@ export async function POST(req: NextRequest) {
     }
 
     let attempt = await verifyOnce('0');
+    if (!attempt.ok && (attempt.message || '').toLowerCase().includes('limit')) {
+      // rate limited
+      return NextResponse.json({ message: attempt.message }, { status: 429 });
+    }
     if (!attempt.ok) {
       // retry with optimizer enabled
       attempt = await verifyOnce('1');

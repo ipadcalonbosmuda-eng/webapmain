@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,6 +25,7 @@ export default function CreateTokenPage() {
   const { address } = useAccount();
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const verifyInProgressRef = useRef<string | null>(null);
   const [lastForm, setLastForm] = useState<CreateTokenForm | null>(null);
 
   const {
@@ -169,8 +170,14 @@ export default function CreateTokenPage() {
         }
         if (!tokenAddress) return;
 
+        // prevent duplicate verify requests for the same token
+        if (verifyInProgressRef.current === tokenAddress) return;
+        verifyInProgressRef.current = tokenAddress;
+
         addToast({ type: 'info', title: 'Verifying on Explorer', description: 'Submitting source code for verification...' });
 
+        // small delay to avoid burst after tx mined
+        await new Promise((r) => setTimeout(r, 1200));
         const resp = await fetch('/api/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -182,7 +189,7 @@ export default function CreateTokenPage() {
             owner: lastForm.owner,
           }),
         });
-        const json = await resp.json();
+        const json = await resp.json().catch(() => ({}));
         if (resp.ok) {
           addToast({ type: 'success', title: 'Verification Requested', description: json.message || 'Verification request submitted.' });
         } else {
