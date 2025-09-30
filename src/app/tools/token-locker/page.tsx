@@ -36,6 +36,8 @@ export default function TokenLockerPage() {
     hash,
   });
   const publicClient = usePublicClient();
+  const [isApproving, setIsApproving] = useState(false);
+  const [approvedForAmount, setApprovedForAmount] = useState(false);
 
   const tokenAddress = watch('tokenAddress');
   const amount = watch('amount');
@@ -56,6 +58,11 @@ export default function TokenLockerPage() {
     query: { enabled: !!tokenAddress },
   });
   const decimals = Number((tokenDecimals as unknown as number) ?? 18);
+
+  // Reset local approval flag when token/amount changes
+  useEffect(() => {
+    setApprovedForAmount(false);
+  }, [tokenAddress, amount]);
 
   // Check allowance
   const { data: allowance } = useReadContract({
@@ -90,7 +97,49 @@ export default function TokenLockerPage() {
     setToasts((prev) => [...prev, { ...toast, id, onClose: removeToast }]);
   }, [removeToast]);
 
-  // Approve and lock in one flow
+  // Approve only, then user can lock as separate step
+  const handleApprove = async () => {
+    if (!tokenAddress || !amount || !process.env.NEXT_PUBLIC_TOKEN_LOCKER) return;
+    try {
+      setIsApproving(true);
+      const amountInUnits = parseUnits(amount, decimals);
+      const approveHash = await writeContract({
+        address: tokenAddress as `0x${string}`,
+        abi: [
+          {
+            inputs: [
+              { name: 'spender', type: 'address' },
+              { name: 'amount', type: 'uint256' },
+            ],
+            name: 'approve',
+            outputs: [{ name: '', type: 'bool' }],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ],
+        functionName: 'approve',
+        args: [process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`, amountInUnits],
+      });
+      if (publicClient && approveHash) {
+        await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
+      }
+      setApprovedForAmount(true);
+      addToast({
+        type: 'success',
+        title: 'Approved Successfully',
+        description: 'Locker is now approved to spend your tokens.',
+      });
+    } catch (error) {
+      console.error('Error approving token:', error);
+      addToast({
+        type: 'error',
+        title: 'Approval Failed',
+        description: 'Failed to approve token spending. Please try again.',
+      });
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   const onSubmit = async (data: TokenLockerForm) => {
     if (!process.env.NEXT_PUBLIC_TOKEN_LOCKER) {
@@ -107,44 +156,7 @@ export default function TokenLockerPage() {
       const lockUntil = Math.floor(new Date(data.lockUntil).getTime() / 1000);
       const amountInUnits = parseUnits(data.amount, decimals);
 
-      // If allowance is insufficient, approve first
-      const currentAllowance = typeof allowance === 'bigint' ? allowance : BigInt(0);
-      if (currentAllowance < amountInUnits) {
-        try {
-          const approveHash = await writeContract({
-            address: data.tokenAddress as `0x${string}`,
-            abi: [
-              {
-                inputs: [
-                  { name: 'spender', type: 'address' },
-                  { name: 'amount', type: 'uint256' },
-                ],
-                name: 'approve',
-                outputs: [{ name: '', type: 'bool' }],
-                stateMutability: 'nonpayable',
-                type: 'function',
-              },
-            ],
-            functionName: 'approve',
-            args: [process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`, amountInUnits],
-          });
-
-          // Wait for approval confirmation
-          if (publicClient && approveHash) {
-            await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
-          }
-        } catch (err) {
-          console.error('Error approving token:', err);
-          addToast({
-            type: 'error',
-            title: 'Approval Failed',
-            description: 'Failed to approve token spending. Please try again.',
-          });
-          return;
-        }
-      }
-
-      // Now perform the lock (this sets hash for the success UI)
+      // Perform the lock (this sets hash for the success UI)
       await writeContract({
         address: process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`,
         abi: tokenLockerAbi,
@@ -167,7 +179,11 @@ export default function TokenLockerPage() {
     }
   };
 
-  // We run approval automatically in onSubmit; no separate UI needed
+  // Compute whether we still need approval (respects local approved flag)
+  const amountInUnitsForCheck = amount ? parseUnits(amount, decimals) : BigInt(0);
+  const needsApprovalCheck = !!(
+    amount && tokenAddress && !approvedForAmount && (typeof allowance !== 'bigint' || allowance < amountInUnitsForCheck)
+  );
 
   // One-time success toast per transaction
   const lastNotifiedHashRef = useRef<string | null>(null);
@@ -227,12 +243,24 @@ export default function TokenLockerPage() {
 
                   {/* Cliff removed: simple timelock */}
 
-                  {/* Approval is handled automatically during submission */}
+                  {needsApprovalCheck && (
+                    <div className="md:col-span-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-yellow-800 mb-3">Approve the locker to spend your tokens first.</p>
+                      <button
+                        type="button"
+                        onClick={handleApprove}
+                        disabled={isApproving || isPending || isConfirming}
+                        className="btn-primary"
+                      >
+                        {isApproving ? 'Approving...' : 'Approve Token Spending'}
+                      </button>
+                    </div>
+                  )}
 
                   <div className="md:col-span-2 pt-2">
                     <button
                       type="submit"
-                      disabled={isLoading || isPending || isConfirming}
+                      disabled={isLoading || isPending || isConfirming || needsApprovalCheck}
                       className="btn-primary w-full py-3 text-lg"
                     >
                       {isLoading || isPending || isConfirming ? (
