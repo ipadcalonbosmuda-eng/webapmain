@@ -43,13 +43,16 @@ export default function CreateTokenPage() {
     hash,
   });
 
-  // Add contract diagnostic info
+  // Add contract diagnostic info (run once on mount)
   const contractAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY;
-  console.log('🔍 Contract Diagnostic:', {
-    address: contractAddress,
-    addressValid: contractAddress?.startsWith('0x') && contractAddress.length === 42,
-    timestamp: new Date().toISOString()
-  });
+  
+  useEffect(() => {
+    console.log('🔍 Contract Diagnostic:', {
+      address: contractAddress,
+      addressValid: contractAddress?.startsWith('0x') && contractAddress.length === 42,
+      timestamp: new Date().toISOString()
+    });
+  }, []); // Empty dependency array = run once on mount
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -72,25 +75,10 @@ export default function CreateTokenPage() {
 
     setIsLoading(true);
     try {
-      console.log('Create Token Debug Info:', {
-        contractAddress: process.env.NEXT_PUBLIC_TOKEN_FACTORY,
-        name: data.name,
-        symbol: data.symbol,
-        totalSupply: data.totalSupply,
-        owner: data.owner
-      });
+      console.log('🚀 Creating Token:', { name: data.name, symbol: data.symbol });
 
       // Convert total supply to proper format (multiply by 10^18 for standard ERC20)
       const totalSupplyWithDecimals = BigInt(data.totalSupply) * BigInt(10 ** 18);
-      
-      console.log('Formatted parameters:', {
-        name: data.name,
-        symbol: data.symbol,
-        totalSupplyOriginal: data.totalSupply,
-        totalSupplyWithDecimals: totalSupplyWithDecimals.toString(),
-        owner: data.owner,
-        contractAddress: process.env.NEXT_PUBLIC_TOKEN_FACTORY
-      });
 
       // Validate contract address format
       const contractAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY;
@@ -107,23 +95,21 @@ export default function CreateTokenPage() {
       let success = false;
       
       try {
-        // Try createToken with decimals parameter (name, symbol, totalSupply, decimals, owner)
-        console.log('Trying createToken with decimals...');
+        console.log('1️⃣ Trying createToken with decimals...');
         await writeContract({
           address: contractAddress as `0x${string}`,
           abi: tokenFactoryAbi,
           functionName: 'createToken',
           args: [data.name, data.symbol, totalSupplyWithDecimals, 18, data.owner as `0x${string}`],
-          gas: BigInt(2000000), // Add explicit gas limit
+          gas: BigInt(2000000),
         });
         success = true;
-        console.log('✅ createToken with decimals succeeded');
+        console.log('✅ SUCCESS Level 1');
       } catch (firstError) {
-        console.log('❌ createToken with decimals failed:', firstError);
+        console.log('❌ Level 1 failed');
         
         try {
-          // Try createToken without decimals (name, symbol, totalSupply, owner)
-          console.log('Trying createToken without decimals...');
+          console.log('2️⃣ Trying createToken without decimals...');
           await writeContract({
             address: contractAddress as `0x${string}`,
             abi: tokenFactoryAbi,
@@ -132,13 +118,12 @@ export default function CreateTokenPage() {
             gas: BigInt(2000000),
           });
           success = true;
-          console.log('✅ createToken without decimals succeeded');
+          console.log('✅ SUCCESS Level 2');
         } catch (secondError) {
-          console.log('❌ createToken without decimals failed:', secondError);
+          console.log('❌ Level 2 failed');
           
           try {
-            // Try create function (name, symbol, totalSupply, owner)
-            console.log('Trying create function...');
+            console.log('3️⃣ Trying create function...');
             await writeContract({
               address: contractAddress as `0x${string}`,
               abi: tokenFactoryAbi,
@@ -147,12 +132,11 @@ export default function CreateTokenPage() {
               gas: BigInt(2000000),
             });
             success = true;
-            console.log('✅ create function succeeded');
+            console.log('✅ SUCCESS Level 3');
           } catch (thirdError) {
-            console.log('❌ create function failed:', thirdError);
+            console.log('❌ Level 3 failed');
             
-            // Try with original totalSupply (no decimals multiplication)
-            console.log('Trying create with original totalSupply...');
+            console.log('4️⃣ Final attempt...');
             await writeContract({
               address: contractAddress as `0x${string}`,
               abi: tokenFactoryAbi,
@@ -161,7 +145,7 @@ export default function CreateTokenPage() {
               gas: BigInt(2000000),
             });
             success = true;
-            console.log('✅ create with original totalSupply succeeded');
+            console.log('✅ SUCCESS Level 4');
           }
         }
       }
