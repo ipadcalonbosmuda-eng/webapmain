@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
     const { address, name, symbol, totalSupplyWei, owner } = await req.json();
 
     const apiKey = process.env.PLASMA_ETHERSCAN_API_KEY || process.env.ETHERSCAN_API_KEY || 'plasma';
-    const apiURL = process.env.ETHERSCAN_API_URL || 'https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan';
+    const rawApiURL = process.env.ETHERSCAN_API_URL || 'https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan';
+    const apiURL = rawApiURL.endsWith('/api') ? rawApiURL : `${rawApiURL.replace(/\/$/, '')}/api`;
 
     // Our MinimalERC20 is embedded inside TokenFactory; for explorer verification,
     // we submit a flattened source with constructor args encoded.
@@ -28,30 +29,60 @@ export async function POST(req: NextRequest) {
       [name, symbol, BigInt(totalSupplyWei), owner as `0x${string}`]
     ).replace(/^0x/, '');
 
-    const params = new URLSearchParams();
-    params.set('module', 'contract');
-    params.set('action', 'verifysourcecode');
-    params.set('apikey', apiKey);
-    params.set('contractaddress', address);
-    params.set('sourceCode', sourceCode);
-    params.set('codeformat', 'solidity-single-file');
-    params.set('contractname', 'MinimalERC20');
-    params.set('compilerversion', 'v0.8.23+commit.f704f362');
-    params.set('optimizationUsed', '0');
-    params.set('runs', '200');
-    params.set('language', 'Solidity');
-    params.set('constructorArguements', encodedArgs);
+    async function verifyOnce(optimizationUsed: '0' | '1') {
+      const form = new URLSearchParams();
+      form.set('module', 'contract');
+      form.set('action', 'verifysourcecode');
+      form.set('apikey', apiKey);
+      form.set('contractaddress', address);
+      form.set('sourceCode', sourceCode);
+      form.set('codeformat', 'solidity-single-file');
+      form.set('contractname', 'MinimalERC20');
+      form.set('compilerversion', 'v0.8.23+commit.f704f362');
+      form.set('optimizationUsed', optimizationUsed);
+      form.set('runs', '200');
+      form.set('licenseType', '3'); // MIT
+      form.set('language', 'Solidity');
+      form.set('constructorArguements', encodedArgs);
 
-    const res = await fetch(apiURL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return NextResponse.json({ message: json?.result || 'Explorer error' }, { status: 500 });
+      const res = await fetch(apiURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString(),
+      });
+      const json = (await res.json().catch(() => ({}))) as { status?: string; result?: string; message?: string };
+      if (!res.ok || json?.status === '0') {
+        return { ok: false as const, message: json?.result || json?.message || 'Explorer error' };
+      }
+      // json.result should be a GUID
+      const guid = json.result as string;
+      // poll
+      for (let i = 0; i < 8; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const qs = new URLSearchParams();
+        qs.set('module', 'contract');
+        qs.set('action', 'checkverifystatus');
+        qs.set('apikey', apiKey);
+        qs.set('guid', guid);
+        const poll = await fetch(`${apiURL}?${qs.toString()}`, { method: 'GET' });
+        const pj = (await poll.json().catch(() => ({}))) as { status?: string; result?: string; message?: string };
+        if (pj?.status === '1' && (pj?.result || '').toLowerCase().includes('pass')) {
+          return { ok: true as const, message: pj.result || 'Verified' };
+        }
+        if (pj?.status === '0' && pj?.result && !pj.result.toLowerCase().includes('pending')) {
+          return { ok: false as const, message: pj.result };
+        }
+      }
+      return { ok: false as const, message: 'Verification pending. Try again later.' };
     }
-    return NextResponse.json({ message: json?.result || 'Verification submitted' });
+
+    let attempt = await verifyOnce('0');
+    if (!attempt.ok) {
+      // retry with optimizer enabled
+      attempt = await verifyOnce('1');
+    }
+    if (attempt.ok) return NextResponse.json({ message: attempt.message });
+    return NextResponse.json({ message: attempt.message }, { status: 500 });
   } catch (e) {
     const err = e as Error;
     return NextResponse.json({ message: err.message || 'Unknown error' }, { status: 500 });
