@@ -102,7 +102,7 @@ export default function LiquidityLockerPage() {
 
           {/* Blur overlay while coming soon */}
           {isComingSoon && (
-            <div className="absolute inset-0 z-10 pointer-events-none">
+            <div className="absolute inset-0 z-10 pointer-events-auto cursor-not-allowed">
               <div className="absolute inset-0 backdrop-blur-sm bg-white/60" />
               <div className="absolute inset-x-0 top-24 mx-auto max-w-2xl z-20 text-center px-6">
                 <div className="rounded-lg border border-yellow-300 bg-yellow-50 text-yellow-800 p-4 shadow-sm">
@@ -115,7 +115,7 @@ export default function LiquidityLockerPage() {
             </div>
           )}
 
-          <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 ${isComingSoon ? 'blur-sm select-none' : ''}`}>
+          <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 ${isComingSoon ? 'blur-sm select-none pointer-events-none' : ''}`}>
             {/* Left: Form */}
             <div className="lg:col-span-8">
               <div className="card p-8">
