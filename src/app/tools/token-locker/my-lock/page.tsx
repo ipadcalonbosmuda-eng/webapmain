@@ -59,10 +59,10 @@ export default function MyLockPage() {
         decimals: l.decimals,
         symbol: l.symbol,
       }));
-      const filtered = allResults.filter((r) => (r.withdrawable ?? BigInt(0)) > BigInt(0));
-      setRows(filtered);
-      setTotalLocksCount(allResults.length);
-      setTotalUnlockCount(filtered.length);
+      const active = allResults.filter((r) => ((r.amount ?? BigInt(0)) - (r.withdrawn ?? BigInt(0))) > BigInt(0));
+      setRows(active);
+      setTotalLocksCount(active.length);
+      setTotalUnlockCount(active.filter((r) => (r.withdrawable ?? BigInt(0)) > BigInt(0)).length);
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +106,7 @@ export default function MyLockPage() {
             {isLoading ? (
               <p className="text-gray-600">Loading…</p>
             ) : rows.length === 0 ? (
-              <p className="text-gray-600">No withdrawable locks available.</p>
+              <p className="text-gray-600">No active locks available.</p>
             ) : (
               <>
                 {/* Summary */}
