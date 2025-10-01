@@ -22,6 +22,7 @@ type LiquidityLockerForm = z.infer<typeof liquidityLockerSchema>;
 export default function LiquidityLockerPage() {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const isComingSoon = true; // Toggle: blur UI while feature is not ready
 
   const {
     register,
@@ -91,7 +92,7 @@ export default function LiquidityLockerPage() {
   return (
     <RequireWallet>
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Liquidity Locker</h1>
             <p className="text-gray-600">
@@ -99,7 +100,22 @@ export default function LiquidityLockerPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Blur overlay while coming soon */}
+          {isComingSoon && (
+            <div className="absolute inset-0 z-10 pointer-events-none">
+              <div className="absolute inset-0 backdrop-blur-sm bg-white/60" />
+              <div className="absolute inset-x-0 top-24 mx-auto max-w-2xl z-20 text-center px-6">
+                <div className="rounded-lg border border-yellow-300 bg-yellow-50 text-yellow-800 p-4 shadow-sm">
+                  <p className="font-semibold mb-1">Coming Soon</p>
+                  <p className="text-sm">
+                    Fitur Liquidity Locker belum tersedia. Untuk saat ini, Anda dapat mengunci LP token menggunakan Token Locker.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 ${isComingSoon ? 'blur-sm select-none' : ''}`}>
             {/* Left: Form */}
             <div className="lg:col-span-8">
               <div className="card p-8">
