@@ -30,6 +30,10 @@ contract TokenLocker {
     // owner => list of lockIds
     mapping(address => uint256[]) public ownerLocks;
 
+    // lockId => index position inside ownerLocks[owner]
+    // Helps us perform O(1) removal (swap & pop) when a lock is fully withdrawn
+    mapping(uint256 => uint256) private ownerIndex;
+
     event Locked(
         uint256 indexed lockId,
         address indexed owner,
@@ -63,6 +67,8 @@ contract TokenLocker {
             lockUntil: lockUntil,
             owner: msg.sender
         });
+        // Track index so we can delete in O(1) during withdraw
+        ownerIndex[lockId] = ownerLocks[msg.sender].length;
         ownerLocks[msg.sender].push(lockId);
 
         emit Locked(lockId, msg.sender, token, amount, lockUntil);
@@ -89,6 +95,22 @@ contract TokenLocker {
         require(IERC20(info.token).transfer(msg.sender, amountToWithdraw), "TRANSFER_FAILED");
 
         emit Withdrawn(lockId, msg.sender, amountToWithdraw);
+
+        // If the entire amount has been withdrawn, remove lockId from owner's index list.
+        // This ensures locksOf(owner) only returns active locks.
+        if (info.withdrawn >= info.amount) {
+            address owner = info.owner;
+            uint256[] storage list = ownerLocks[owner];
+            uint256 idx = ownerIndex[lockId];
+            uint256 lastIdx = list.length - 1;
+            if (idx != lastIdx) {
+                uint256 lastId = list[lastIdx];
+                list[idx] = lastId;
+                ownerIndex[lastId] = idx;
+            }
+            list.pop();
+            delete ownerIndex[lockId];
+        }
     }
 
     /// @notice Return list of lock IDs for an owner
