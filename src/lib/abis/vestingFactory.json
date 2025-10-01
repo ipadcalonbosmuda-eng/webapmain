@@ -1,73 +1,156 @@
 [
+  { "inputs": [], "name": "InvalidCustomSchedule", "type": "error" },
+  { "inputs": [], "name": "InvalidParams", "type": "error" },
+  { "inputs": [], "name": "InvalidSchedule", "type": "error" },
+  { "inputs": [], "name": "NotBeneficiary", "type": "error" },
+  { "inputs": [], "name": "NothingToRelease", "type": "error" },
+  { "inputs": [], "name": "TransferFailed", "type": "error" },
   {
+    "anonymous": false,
     "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "scheduleId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "token", "type": "address" },
+      { "indexed": true, "internalType": "address", "name": "beneficiary", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "start", "type": "uint256" },
       {
-        "internalType": "address",
-        "name": "beneficiary",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "cliffMonths",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "durationMonths",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint8",
-        "name": "releaseMode",
-        "type": "uint8"
+        "components": [
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "internalType": "bool", "name": "claimed", "type": "bool" }
+        ],
+        "indexed": false,
+        "internalType": "struct PlasmaticVesting.CustomRelease[]",
+        "name": "releases",
+        "type": "tuple[]"
       }
     ],
-    "name": "createSchedule",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "scheduleId",
-        "type": "uint256"
-      }
+    "name": "CustomScheduleCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "scheduleId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "token", "type": "address" },
+      { "indexed": true, "internalType": "address", "name": "beneficiary", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "start", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "cliffMonths", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "durationMonths", "type": "uint256" },
+      { "indexed": false, "internalType": "enum PlasmaticVesting.ReleaseMode", "name": "mode", "type": "uint8" }
     ],
+    "name": "ScheduleCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "scheduleId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "beneficiary", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "remaining", "type": "uint256" }
+    ],
+    "name": "TokensReleased",
+    "type": "event"
+  },
+  {
+    "inputs": [ { "internalType": "uint256", "name": "scheduleId", "type": "uint256" } ],
+    "name": "claim",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
+      { "internalType": "address", "name": "token", "type": "address" },
+      { "internalType": "address", "name": "beneficiary", "type": "address" },
+      { "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
+      { "internalType": "uint256", "name": "cliffMonths", "type": "uint256" },
+      { "internalType": "uint256", "name": "durationMonths", "type": "uint256" },
+      { "internalType": "uint8", "name": "releaseMode", "type": "uint8" },
       {
-        "internalType": "uint256",
-        "name": "scheduleId",
-        "type": "uint256"
+        "components": [
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "internalType": "bool", "name": "claimed", "type": "bool" }
+        ],
+        "internalType": "struct PlasmaticVesting.CustomRelease[]",
+        "name": "customReleases_",
+        "type": "tuple[]"
       }
     ],
-    "name": "claimableAmount",
+    "name": "createSchedule",
+    "outputs": [ { "internalType": "uint256", "name": "scheduleId", "type": "uint256" } ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" }, { "internalType": "uint256", "name": "", "type": "uint256" } ],
+    "name": "customReleases",
+    "outputs": [
+      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "bool", "name": "claimed", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [ { "internalType": "uint256", "name": "scheduleId", "type": "uint256" } ],
+    "name": "getClaimableAmount",
+    "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [ { "internalType": "uint256", "name": "scheduleId", "type": "uint256" } ],
+    "name": "getCustomReleases",
     "outputs": [
       {
-        "internalType": "uint256",
+        "components": [
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "internalType": "bool", "name": "claimed", "type": "bool" }
+        ],
+        "internalType": "struct PlasmaticVesting.CustomRelease[]",
         "name": "",
-        "type": "uint256"
+        "type": "tuple[]"
       }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "scheduleId",
-        "type": "uint256"
-      }
+    "inputs": [ { "internalType": "address", "name": "user", "type": "address" } ],
+    "name": "getUserSchedules",
+    "outputs": [ { "internalType": "uint256[]", "name": "", "type": "uint256[]" } ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  { "inputs": [], "name": "nextScheduleId", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  {
+    "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ],
+    "name": "schedules",
+    "outputs": [
+      { "internalType": "address", "name": "token", "type": "address" },
+      { "internalType": "address", "name": "beneficiary", "type": "address" },
+      { "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
+      { "internalType": "uint256", "name": "released", "type": "uint256" },
+      { "internalType": "uint256", "name": "start", "type": "uint256" },
+      { "internalType": "uint256", "name": "cliffMonths", "type": "uint256" },
+      { "internalType": "uint256", "name": "durationMonths", "type": "uint256" },
+      { "internalType": "enum PlasmaticVesting.ReleaseMode", "name": "mode", "type": "uint8" },
+      { "internalType": "bool", "name": "isActive", "type": "bool" }
     ],
-    "name": "claim",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [ { "internalType": "address", "name": "", "type": "address" }, { "internalType": "uint256", "name": "", "type": "uint256" } ],
+    "name": "userSchedules",
+    "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ],
+    "stateMutability": "view",
     "type": "function"
   }
 ]

@@ -12,6 +12,7 @@ import { explorerUrl } from '@/lib/utils';
 import vestingFactoryAbi from '@/lib/abis/vestingFactory.json';
 
 const vestingSchema = z.object({
+  tokenAddress: z.string().min(42, 'Invalid token address').max(42, 'Invalid token address'),
   beneficiary: z.string().min(42, 'Invalid beneficiary address').max(42, 'Invalid beneficiary address'),
   totalAmount: z.string().min(1, 'Total amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Total amount must be a positive number'),
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
@@ -33,6 +34,7 @@ export default function VestingPage() {
     formState: { errors },
   } = useForm<VestingForm>({
     defaultValues: {
+      tokenAddress: '',
       beneficiary: address || '',
       releaseMode: '0',
     },
@@ -44,27 +46,21 @@ export default function VestingPage() {
   });
 
 
-  // Read claimable amount
+  // Read claimable amount (new ABI: getClaimableAmount)
   const { data: claimable } = useReadContract({
     address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
     abi: vestingFactoryAbi,
-    functionName: 'claimableAmount',
+    functionName: 'getClaimableAmount',
     args: createdScheduleId ? [BigInt(createdScheduleId)] : undefined,
     query: {
       enabled: !!createdScheduleId && !!process.env.NEXT_PUBLIC_VESTING_FACTORY,
     },
   });
 
-  // Detect vested token from factory and show available wallet balance
-  const { data: vestTokenAddr } = useReadContract({
-    address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
-    abi: [
-      { inputs: [], name: 'token', outputs: [{ name: '', type: 'address' }], stateMutability: 'view', type: 'function' },
-    ],
-    functionName: 'token',
-    query: { enabled: !!process.env.NEXT_PUBLIC_VESTING_FACTORY },
-  });
-  const vestedTokenAddress = vestTokenAddr as `0x${string}` | undefined;
+  // Detect selected token from form and show available wallet balance
+  const { watch } = require('react-hook-form');
+  const tokenAddress = (watch as any)('tokenAddress') as string | undefined;
+  const vestedTokenAddress = tokenAddress && tokenAddress.length === 42 ? (tokenAddress as `0x${string}`) : undefined;
 
   const { data: tokenDecimals } = useReadContract({
     address: vestedTokenAddress,
@@ -130,11 +126,13 @@ export default function VestingPage() {
         abi: vestingFactoryAbi,
         functionName: 'createSchedule',
         args: [
+          data.tokenAddress as `0x${string}`,
           data.beneficiary as `0x${string}`,
           BigInt(data.totalAmount),
           BigInt(data.cliffMonths),
           BigInt(data.durationMonths),
           Number(data.releaseMode),
+          [], // customReleases_
         ],
       });
     } catch (error) {
