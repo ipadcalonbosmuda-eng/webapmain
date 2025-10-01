@@ -124,7 +124,6 @@ export default function MyLockPage() {
                 <table className="min-w-full text-sm text-gray-900">
                   <thead>
                     <tr className="text-left text-gray-700">
-                      <th className="py-2 pr-4">Lock ID</th>
                       <th className="py-2 pr-4">Token</th>
                       <th className="py-2 pr-4">Amount</th>
                       <th className="py-2 pr-4">Withdrawn</th>
@@ -136,7 +135,6 @@ export default function MyLockPage() {
                   <tbody>
                     {rows.map((row, idx) => (
                       <tr key={row?.lockId ? String(row.lockId) : `row-${idx}`} className="border-t border-gray-200 hover:bg-gray-50">
-                        <td className="py-3 pr-4 font-mono">{row?.lockId ? String(row.lockId) : '-'}</td>
                         <td className="py-3 pr-4 font-mono break-all">
                           {row?.token || '-'}
                           <button
