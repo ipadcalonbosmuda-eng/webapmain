@@ -23,6 +23,8 @@ export default function MyLockPage() {
   const [rows, setRows] = useState<LockRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selected, setSelected] = useState<bigint | null>(null);
+  const [totalLocksCount, setTotalLocksCount] = useState(0);
+  const [totalUnlockCount, setTotalUnlockCount] = useState(0);
   const { writeContract, data: txHash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
@@ -47,7 +49,7 @@ export default function MyLockPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const results: LockRow[] = (locks || []).map((l) => ({
+      const allResults: LockRow[] = (locks || []).map((l) => ({
         lockId: l.lockId,
         token: l.token,
         amount: l.amount,
@@ -57,7 +59,10 @@ export default function MyLockPage() {
         decimals: l.decimals,
         symbol: l.symbol,
       }));
-      setRows(results);
+      const filtered = allResults.filter((r) => (r.withdrawable ?? BigInt(0)) > BigInt(0));
+      setRows(filtered);
+      setTotalLocksCount(allResults.length);
+      setTotalUnlockCount(filtered.length);
     } finally {
       setIsLoading(false);
     }
@@ -101,26 +106,18 @@ export default function MyLockPage() {
             {isLoading ? (
               <p className="text-gray-600">Loading…</p>
             ) : rows.length === 0 ? (
-              <p className="text-gray-600">No locks found for your address.</p>
+              <p className="text-gray-600">No withdrawable locks available.</p>
             ) : (
               <>
                 {/* Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div className="rounded-lg border border-gray-200 p-4 bg-white">
                     <p className="text-xs text-gray-500">Total Locks</p>
-                    <p className="text-2xl font-semibold text-gray-900">{rows.length}</p>
+                    <p className="text-2xl font-semibold text-gray-900">{totalLocksCount}</p>
                   </div>
                   <div className="rounded-lg border border-gray-200 p-4 bg-white">
-                    <p className="text-xs text-gray-500">Total Amount</p>
-                    <p className="text-2xl font-semibold text-gray-900">
-                      {safeFormat(rows.reduce((a, r) => a + (r.amount ?? BigInt(0)), BigInt(0)), rows[0]?.decimals, rows[0]?.symbol)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-gray-200 p-4 bg-white">
-                    <p className="text-xs text-gray-500">Withdrawable</p>
-                    <p className="text-2xl font-semibold text-gray-900">
-                      {safeFormat(rows.reduce((a, r) => a + (r.withdrawable ?? BigInt(0)), BigInt(0)), rows[0]?.decimals, rows[0]?.symbol)}
-                    </p>
+                    <p className="text-xs text-gray-500">Total Unlock</p>
+                    <p className="text-2xl font-semibold text-gray-900">{totalUnlockCount}</p>
                   </div>
                 </div>
 
