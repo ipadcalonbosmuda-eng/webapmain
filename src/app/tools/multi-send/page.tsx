@@ -382,7 +382,6 @@ export default function MultiSendPage() {
                           <div className="md:col-span-5">
                             <FormField
                               label="Amount"
-                              placeholder="1000"
                               error={errors.recipients?.[index]?.amount?.message}
                               {...register(`recipients.${index}.amount`)}
                             />
