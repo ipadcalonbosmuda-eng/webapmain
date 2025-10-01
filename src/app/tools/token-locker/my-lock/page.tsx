@@ -126,9 +126,7 @@ export default function MyLockPage() {
                     <tr className="text-left text-gray-700">
                       <th className="py-2 pr-4">Token</th>
                       <th className="py-2 pr-4">Amount</th>
-                      <th className="py-2 pr-4">Withdrawn</th>
                       <th className="py-2 pr-4">Unlock Time</th>
-                      <th className="py-2 pr-4">Withdrawable</th>
                       <th className="py-2 pr-4">Action</th>
                     </tr>
                   </thead>
@@ -145,13 +143,7 @@ export default function MyLockPage() {
                           </button>
                         </td>
                         <td className="py-3 pr-4">{safeFormat((row.amount ?? BigInt(0)) - (row.withdrawn ?? BigInt(0)), row.decimals, row.symbol)}</td>
-                        <td className="py-3 pr-4">{safeFormat(row.withdrawn, row.decimals, row.symbol)}</td>
                         <td className="py-3 pr-4">{new Date(Number(row?.lockUntil ?? BigInt(0)) * 1000).toLocaleString()}</td>
-                        <td className="py-3 pr-4">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border border-gray-300">
-                            {safeFormat(row.withdrawable, row.decimals, row.symbol)}
-                          </span>
-                        </td>
                         <td className="py-3 pr-4">
                           <button
                             className="btn-primary px-3 py-1"
