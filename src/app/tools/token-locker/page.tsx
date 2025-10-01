@@ -60,6 +60,18 @@ export default function TokenLockerPage() {
   });
   const decimals = Number((tokenDecimals as unknown as number) ?? 18);
 
+  // Helpers to validate and safely parse amount input without throwing
+  const parseUnitsSafe = (val?: string, dec?: number): bigint | null => {
+    try {
+      if (!val) return null;
+      // Accept only digits with optional single decimal point and digits after it
+      if (!/^\d+(?:\.\d+)?$/.test(val)) return null;
+      return parseUnits(val, typeof dec === 'number' ? dec : 18);
+    } catch {
+      return null;
+    }
+  };
+
   // Read token symbol for UX label
   const { data: tokenSymbolData } = useReadContract({
     address: tokenAddress as `0x${string}`,
@@ -132,8 +144,8 @@ export default function TokenLockerPage() {
 
   // When on-chain allowance becomes sufficient, mark approved to avoid double-approve
   useEffect(() => {
-    const required = amount ? parseUnits(amount, decimals) : BigInt(0);
-    if (typeof allowance === 'bigint' && allowance >= required) {
+    const required = parseUnitsSafe(amount, decimals);
+    if (typeof allowance === 'bigint' && required !== null && allowance >= required) {
       setApprovedForAmount(true);
     }
   }, [allowance, amount, decimals]);
@@ -152,10 +164,11 @@ export default function TokenLockerPage() {
   // Approve only, then user can lock as separate step
   const handleApprove = async () => {
     if (!tokenAddress || !amount || !process.env.NEXT_PUBLIC_TOKEN_LOCKER) return;
+    const amountInUnits = parseUnitsSafe(amount, decimals);
+    if (amountInUnits === null) return;
     try {
       setIsApproving(true);
       setLastTxType('approve');
-      const amountInUnits = parseUnits(amount, decimals);
       const approveHash = await writeContract({
         address: tokenAddress as `0x${string}`,
         abi: [
@@ -222,7 +235,11 @@ export default function TokenLockerPage() {
     setIsLoading(true);
     try {
       const lockUntil = Math.floor(new Date(data.lockUntil).getTime() / 1000);
-      const amountInUnits = parseUnits(data.amount, decimals);
+      const amountInUnits = parseUnitsSafe(data.amount, decimals);
+      if (amountInUnits === null) {
+        addToast({ type: 'error', title: 'Invalid amount', description: 'Please enter a valid number.' });
+        return;
+      }
       setLastTxType('lock');
 
       // Perform the lock (this sets hash for the success UI)
@@ -249,9 +266,10 @@ export default function TokenLockerPage() {
   };
 
   // Compute whether we still need approval (uses on-chain allowance; local flag prevents flicker post-approval)
-  const amountInUnitsForCheck = amount ? parseUnits(amount, decimals) : BigInt(0);
-  const onChainNeedsApproval = typeof allowance !== 'bigint' || allowance < amountInUnitsForCheck;
-  const needsApprovalCheck = !!(amount && tokenAddress && (onChainNeedsApproval && !approvedForAmount));
+  const amountInUnitsForCheck = parseUnitsSafe(amount, decimals);
+  const isAmountValid = amountInUnitsForCheck !== null;
+  const onChainNeedsApproval = isAmountValid && (typeof allowance !== 'bigint' || allowance < (amountInUnitsForCheck as bigint));
+  const needsApprovalCheck = !!(isAmountValid && tokenAddress && (onChainNeedsApproval && !approvedForAmount));
 
   // One-time success toast per transaction
   const lastNotifiedHashRef = useRef<string | null>(null);
@@ -293,9 +311,10 @@ export default function TokenLockerPage() {
 
                   <FormField
                     label={`Amount to Lock${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
-                    placeholder="1000"
                     error={errors.amount?.message}
                     helperText={`Amount of tokens to lock (in token units).${tokenAddress ? ` Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : ''}`}
+                    inputMode="decimal"
+                    pattern="^\\d*(?:\\.\\d*)?$"
                     {...register('amount')}
                     required
                   />
