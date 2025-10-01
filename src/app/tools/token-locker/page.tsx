@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { parseUnits } from 'viem';
+import { parseUnits, formatUnits } from 'viem';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
@@ -59,6 +59,48 @@ export default function TokenLockerPage() {
     query: { enabled: !!tokenAddress },
   });
   const decimals = Number((tokenDecimals as unknown as number) ?? 18);
+
+  // Read token symbol for UX label
+  const { data: tokenSymbolData } = useReadContract({
+    address: tokenAddress as `0x${string}`,
+    abi: [
+      {
+        inputs: [],
+        name: 'symbol',
+        outputs: [{ name: '', type: 'string' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    functionName: 'symbol',
+    query: { enabled: !!tokenAddress },
+  });
+  const tokenSymbol = (tokenSymbolData as unknown as string) ?? '';
+
+  // Read wallet balance for the selected token
+  const { data: balanceData } = useReadContract({
+    address: tokenAddress as `0x${string}`,
+    abi: [
+      {
+        inputs: [{ name: 'account', type: 'address' }],
+        name: 'balanceOf',
+        outputs: [{ name: '', type: 'uint256' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    functionName: 'balanceOf',
+    args: address && tokenAddress ? [address] : undefined,
+    query: { enabled: !!address && !!tokenAddress },
+  });
+  const walletBalance = (balanceData as unknown as bigint) ?? BigInt(0);
+  const walletBalanceFormatted = (() => {
+    try {
+      return formatUnits(walletBalance, decimals);
+    } catch {
+      return '0';
+    }
+  })();
 
   // Reset local approval flag when token/amount changes
   useEffect(() => {
@@ -250,10 +292,10 @@ export default function TokenLockerPage() {
                   </div>
 
                   <FormField
-                    label="Amount to Lock"
+                    label={`Amount to Lock${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
                     placeholder="1000"
                     error={errors.amount?.message}
-                    helperText="Amount of tokens to lock (in token units)"
+                    helperText={`Amount of tokens to lock (in token units).${tokenAddress ? ` Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : ''}`}
                     {...register('amount')}
                     required
                   />
