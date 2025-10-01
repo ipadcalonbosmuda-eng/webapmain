@@ -114,7 +114,7 @@ export function Sidebar() {
                       {isSectionOpen && (
                         <div className="pl-9 space-y-1">
                           {item.children.map((child) => {
-                            const isActive = pathname.startsWith(child.href);
+                            const isActive = pathname === child.href;
                             return (
                               <Link
                                 key={child.name}
