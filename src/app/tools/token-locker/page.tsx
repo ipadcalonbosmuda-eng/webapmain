@@ -272,7 +272,7 @@ export default function TokenLockerPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Token Lock</h1>
-            <p className="text-gray-600">Lock your ERC-20 tokens until a specified unlock date.</p>
+            <p className="text-gray-600">Lock your tokens until a specified unlock date.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -285,7 +285,7 @@ export default function TokenLockerPage() {
                       label="Token Address"
                       placeholder="0x..."
                       error={errors.tokenAddress?.message}
-                      helperText="ERC-20 token contract address to lock"
+                      helperText="Token contract address to lock"
                       {...register('tokenAddress')}
                       required
                     />
