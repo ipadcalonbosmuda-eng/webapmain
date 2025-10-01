@@ -103,44 +103,74 @@ export default function MyLockPage() {
             ) : rows.length === 0 ? (
               <p className="text-gray-600">No locks found for your address.</p>
             ) : (
-              <table className="min-w-full text-sm text-gray-900">
-                <thead>
-                  <tr className="text-left text-gray-700">
-                    <th className="py-2 pr-4">Lock ID</th>
-                    <th className="py-2 pr-4">Token</th>
-                    <th className="py-2 pr-4">Amount</th>
-                    <th className="py-2 pr-4">Withdrawn</th>
-                    <th className="py-2 pr-4">Unlock Time</th>
-                    <th className="py-2 pr-4">Withdrawable</th>
-                    <th className="py-2 pr-4">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, idx) => (
-                    <tr key={row?.lockId ? String(row.lockId) : `row-${idx}`} className="border-t border-gray-200">
-                      <td className="py-3 pr-4 font-mono">{row?.lockId ? String(row.lockId) : '-'}</td>
-                      <td className="py-3 pr-4 font-mono break-all">{row?.token || '-'}</td>
-                      <td className="py-3 pr-4">
-                        {row ? safeFormat((row.amount ?? BigInt(0)) - (row.withdrawn ?? BigInt(0)), row.decimals, row.symbol) : '-'}
-                      </td>
-                      <td className="py-3 pr-4">
-                        {row ? safeFormat(row.withdrawn, row.decimals, row.symbol) : '-'}
-                      </td>
-                      <td className="py-3 pr-4">{new Date(Number(row?.lockUntil ?? BigInt(0)) * 1000).toLocaleString()}</td>
-                      <td className="py-3 pr-4">{row ? safeFormat(row.withdrawable, row.decimals, row.symbol) : '-'}</td>
-                      <td className="py-3 pr-4">
-                        <button
-                          className="btn-primary px-3 py-1"
-                          disabled={!row || row.withdrawable === BigInt(0) || isPending || isConfirming}
-                          onClick={() => onWithdraw(row.lockId)}
-                        >
-                          {selected === row.lockId && (isPending || isConfirming) ? 'Withdrawing...' : 'Withdraw'}
-                        </button>
-                      </td>
+              <>
+                {/* Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="rounded-lg border border-gray-200 p-4 bg-white">
+                    <p className="text-xs text-gray-500">Total Locks</p>
+                    <p className="text-2xl font-semibold text-gray-900">{rows.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 p-4 bg-white">
+                    <p className="text-xs text-gray-500">Total Amount</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {safeFormat(rows.reduce((a, r) => a + (r.amount ?? BigInt(0)), BigInt(0)), rows[0]?.decimals, rows[0]?.symbol)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 p-4 bg-white">
+                    <p className="text-xs text-gray-500">Withdrawable</p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {safeFormat(rows.reduce((a, r) => a + (r.withdrawable ?? BigInt(0)), BigInt(0)), rows[0]?.decimals, rows[0]?.symbol)}
+                    </p>
+                  </div>
+                </div>
+
+                <table className="min-w-full text-sm text-gray-900">
+                  <thead>
+                    <tr className="text-left text-gray-700">
+                      <th className="py-2 pr-4">Lock ID</th>
+                      <th className="py-2 pr-4">Token</th>
+                      <th className="py-2 pr-4">Amount</th>
+                      <th className="py-2 pr-4">Withdrawn</th>
+                      <th className="py-2 pr-4">Unlock Time</th>
+                      <th className="py-2 pr-4">Withdrawable</th>
+                      <th className="py-2 pr-4">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, idx) => (
+                      <tr key={row?.lockId ? String(row.lockId) : `row-${idx}`} className="border-t border-gray-200 hover:bg-gray-50">
+                        <td className="py-3 pr-4 font-mono">{row?.lockId ? String(row.lockId) : '-'}</td>
+                        <td className="py-3 pr-4 font-mono break-all">
+                          {row?.token || '-'}
+                          <button
+                            onClick={() => navigator.clipboard.writeText(row.token)}
+                            className="ml-2 text-xs text-gray-500 hover:text-gray-700 underline"
+                          >
+                            Copy
+                          </button>
+                        </td>
+                        <td className="py-3 pr-4">{safeFormat((row.amount ?? BigInt(0)) - (row.withdrawn ?? BigInt(0)), row.decimals, row.symbol)}</td>
+                        <td className="py-3 pr-4">{safeFormat(row.withdrawn, row.decimals, row.symbol)}</td>
+                        <td className="py-3 pr-4">{new Date(Number(row?.lockUntil ?? BigInt(0)) * 1000).toLocaleString()}</td>
+                        <td className="py-3 pr-4">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border border-gray-300">
+                            {safeFormat(row.withdrawable, row.decimals, row.symbol)}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <button
+                            className="btn-primary px-3 py-1"
+                            disabled={row.withdrawable === BigInt(0) || isPending || isConfirming}
+                            onClick={() => onWithdraw(row.lockId)}
+                          >
+                            {selected === row.lockId && (isPending || isConfirming) ? 'Withdrawing...' : 'Withdraw'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
 
