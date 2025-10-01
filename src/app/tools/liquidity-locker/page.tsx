@@ -108,7 +108,7 @@ export default function LiquidityLockerPage() {
                 <div className="rounded-lg border border-yellow-300 bg-yellow-50 text-yellow-800 p-4 shadow-sm">
                   <p className="font-semibold mb-1">Coming Soon</p>
                   <p className="text-sm">
-                    Fitur Liquidity Locker belum tersedia. Untuk saat ini, Anda dapat mengunci LP token menggunakan Token Locker.
+                    Liquidity Locker is not available yet. For now, you can lock your LP tokens using the Token Locker.
                   </p>
                 </div>
               </div>
