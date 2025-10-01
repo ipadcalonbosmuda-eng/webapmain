@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { formatUnits } from 'viem';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
@@ -53,6 +54,55 @@ export default function VestingPage() {
       enabled: !!createdScheduleId && !!process.env.NEXT_PUBLIC_VESTING_FACTORY,
     },
   });
+
+  // Detect vested token from factory and show available wallet balance
+  const { data: vestTokenAddr } = useReadContract({
+    address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
+    abi: [
+      { inputs: [], name: 'token', outputs: [{ name: '', type: 'address' }], stateMutability: 'view', type: 'function' },
+    ],
+    functionName: 'token',
+    query: { enabled: !!process.env.NEXT_PUBLIC_VESTING_FACTORY },
+  });
+  const vestedTokenAddress = vestTokenAddr as `0x${string}` | undefined;
+
+  const { data: tokenDecimals } = useReadContract({
+    address: vestedTokenAddress,
+    abi: [
+      { inputs: [], name: 'decimals', outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view', type: 'function' },
+    ],
+    functionName: 'decimals',
+    query: { enabled: !!vestedTokenAddress },
+  });
+  const decimals = Number((tokenDecimals as unknown as number) ?? 18);
+
+  const { data: tokenSymbolData } = useReadContract({
+    address: vestedTokenAddress,
+    abi: [
+      { inputs: [], name: 'symbol', outputs: [{ name: '', type: 'string' }], stateMutability: 'view', type: 'function' },
+    ],
+    functionName: 'symbol',
+    query: { enabled: !!vestedTokenAddress },
+  });
+  const tokenSymbol = (tokenSymbolData as unknown as string) ?? '';
+
+  const { data: walletBalanceData } = useReadContract({
+    address: vestedTokenAddress,
+    abi: [
+      { inputs: [{ name: 'account', type: 'address' }], name: 'balanceOf', outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+    ],
+    functionName: 'balanceOf',
+    args: address && vestedTokenAddress ? [address] : undefined,
+    query: { enabled: !!address && !!vestedTokenAddress },
+  });
+  const walletBalance = (walletBalanceData as unknown as bigint) ?? BigInt(0);
+  const walletBalanceFormatted = (() => {
+    try {
+      return formatUnits(walletBalance, decimals);
+    } catch {
+      return walletBalance.toString();
+    }
+  })();
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -162,10 +212,10 @@ export default function VestingPage() {
                   </div>
 
                   <FormField
-                    label="Total Amount"
+                    label={`Total Amount${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
                     placeholder="1000000"
                     error={errors.totalAmount?.message}
-                    helperText="Total amount of tokens to be vested"
+                    helperText={`Total amount of tokens to be vested${vestedTokenAddress ? ` . Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : ''}`}
                     {...register('totalAmount')}
                     required
                   />
