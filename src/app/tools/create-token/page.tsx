@@ -161,7 +161,6 @@ export default function CreateTokenPage() {
                   <div className="md:col-span-2">
                     <FormField
                       label="Token Name"
-                      placeholder="My Awesome Token"
                       error={errors.name?.message}
                       {...register('name')}
                       required
@@ -170,16 +169,14 @@ export default function CreateTokenPage() {
 
                   <FormField
                     label="Token Symbol"
-                    placeholder="MAT"
                     error={errors.symbol?.message}
-                    helperText="2-6 characters, will be displayed as MAT"
+                    helperText="2-6 characters"
                     {...register('symbol')}
                     required
                   />
 
                   <FormField
                     label="Total Supply"
-                    placeholder="1000000"
                     error={errors.totalSupply?.message}
                     helperText="Total number of tokens to be minted"
                     {...register('totalSupply')}
