@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -198,6 +198,23 @@ export default function VestingPage() {
       setValue('unlockUnit', durationUnit);
     }
   }, [durationUnit, setValue, watch]);
+
+  // Build preview unlock schedule (client-side)
+  const schedulePreview = useMemo(() => {
+    if (!vestingPeriods || vestingPeriods <= 0) return [] as Array<{ t: number; amount: bigint }>;
+    if (!totalAmountParsed || typeof totalAmountParsed !== 'bigint') return [] as Array<{ t: number; amount: bigint }>;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const startSec = nowSec + Math.max(0, Math.floor(cliffMonthsVal * SECONDS_PER_MONTH)) * 1; // cliff already in months
+    const base = totalAmountParsed / BigInt(vestingPeriods);
+    let remainder = totalAmountParsed - base * BigInt(vestingPeriods);
+    const out: Array<{ t: number; amount: bigint }> = [];
+    for (let i = 0; i < vestingPeriods; i++) {
+      const extra = remainder > BigInt(0) ? BigInt(1) : BigInt(0);
+      if (remainder > BigInt(0)) remainder -= BigInt(1);
+      out.push({ t: startSec + unitSeconds * (i + 1), amount: base + extra });
+    }
+    return out;
+  }, [vestingPeriods, totalAmountParsed, unitSeconds, cliffMonthsVal]);
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -558,6 +575,36 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>End (approx)</span><span>{endDate.toLocaleDateString()}</span></div>
               </div>
             </div>
+            {/* Claim schedule preview */}
+            {schedulePreview.length > 0 && (
+              <div className="card p-6 space-y-2">
+                <h3 className="text-lg font-semibold text-gray-900">Unlock Schedule Preview</h3>
+                <div className="text-sm text-gray-700">
+                  <div className="flex justify-between"><span>First unlock</span><span>{new Date(schedulePreview[0].t * 1000).toLocaleString()} — {formatUnits(schedulePreview[0].amount, decimals)} {tokenSymbol}</span></div>
+                  <div className="flex justify-between"><span>Last unlock</span><span>{new Date(schedulePreview[schedulePreview.length - 1].t * 1000).toLocaleString()} — {formatUnits(schedulePreview[schedulePreview.length - 1].amount, decimals)} {tokenSymbol}</span></div>
+                </div>
+                <div className="mt-3 max-h-44 overflow-auto border rounded-md">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-700">
+                        <th className="px-3 py-2 text-left">#</th>
+                        <th className="px-3 py-2 text-left">When</th>
+                        <th className="px-3 py-2 text-left">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {schedulePreview.map((e, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="px-3 py-2">{i + 1}</td>
+                          <td className="px-3 py-2">{new Date(e.t * 1000).toLocaleString()}</td>
+                          <td className="px-3 py-2">{formatUnits(e.amount, decimals)} {tokenSymbol}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
               <div className="card p-6 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Guidelines</h3>
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
