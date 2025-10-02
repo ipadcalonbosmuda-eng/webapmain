@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import { RequireWallet } from '@/components/RequireWallet';
@@ -10,7 +11,7 @@ import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
 import { explorerUrl } from '@/lib/utils';
 import vestingFactoryAbi from '@/lib/abis/vestingFactory.json';
-import { Plus, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 const vestingSchema = z.object({
   tokenAddress: z.string().min(42, 'Invalid token address').max(42, 'Invalid token address'),
@@ -40,8 +41,8 @@ export default function VestingPage() {
     formState: { errors },
     watch,
     control,
-    setValue,
   } = useForm<VestingForm>({
+    resolver: zodResolver(vestingSchema),
     defaultValues: {
       tokenAddress: '',
       recipients: [{ beneficiary: address || '', amount: '' }],
@@ -175,7 +176,7 @@ export default function VestingPage() {
       for (const r of targets) {
         const amountEach = parseUnitsSafe(r?.amount, decimals);
         if (amountEach === null) continue;
-        let custom: Array<{ timestamp: bigint; amount: bigint; claimed: boolean }> = [];
+        const custom: Array<{ timestamp: bigint; amount: bigint; claimed: boolean }> = [];
         if (watch('advancedEnabled')) {
           const firstPct = Number(watch('firstMonthPercent') || '0');
           const nextPct = Number(watch('subsequentMonthPercent') || '0');
@@ -184,7 +185,7 @@ export default function VestingPage() {
             const firstAmt = (amountEach * BigInt(Math.round(firstPct * 100))) / BigInt(10000);
             const remaining = amountEach - firstAmt;
             const monthsAfterFirst = Math.max(0, totalMonths - 1);
-            let monthlyAmt = monthsAfterFirst > 0 ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : BigInt(0);
+            const monthlyAmt = monthsAfterFirst > 0 ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : BigInt(0);
             let sum = firstAmt;
             // Build releases: first month
             if (firstAmt > BigInt(0)) {
