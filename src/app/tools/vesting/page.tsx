@@ -458,17 +458,19 @@ export default function VestingPage() {
                         required
                       />
                     </div>
-                    <div className="md:col-span-6 flex flex-col justify-end">
-                      <label className="block text-sm font-medium text-gray-700 mt-[22px]">&nbsp;</label>
-                      <select
-                        {...register('durationUnit')}
-                        className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
-                      >
+                    <div className="md:col-span-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-900 invisible">Unit</label>
+                        <select
+                          {...register('durationUnit')}
+                          className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                        >
                         <option value="day">Day</option>
                         <option value="week">Week</option>
                         <option value="month">Month</option>
                         <option value="year">Year</option>
-                      </select>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -509,17 +511,19 @@ export default function VestingPage() {
                               {...register('advancedCliffValue')}
                             />
                           </div>
-                          <div className="md:col-span-6 flex flex-col justify-end">
-                            <label className="block text-sm font-medium text-gray-700 mt-[22px]">&nbsp;</label>
-                            <select
-                              {...register('advancedCliffUnit')}
-                              className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
-                            >
+                          <div className="md:col-span-6">
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-900 invisible">Unit</label>
+                              <select
+                                {...register('advancedCliffUnit')}
+                                className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                              >
                               <option value="day">Day</option>
                               <option value="week">Week</option>
                               <option value="month">Month</option>
                               <option value="year">Year</option>
-                            </select>
+                              </select>
+                            </div>
                           </div>
                         </div>
                       )}
