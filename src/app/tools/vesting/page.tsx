@@ -411,7 +411,7 @@ export default function VestingPage() {
                         required
                       />
                     </div>
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-6">
                       <label className="block text-sm font-medium text-gray-700">&nbsp;</label>
                       <select
                         {...register('durationUnit')}
@@ -423,20 +423,22 @@ export default function VestingPage() {
                         <option value="year">Year</option>
                       </select>
                     </div>
-                    <div className="md:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700">Unlock Every</label>
-                      <select
-                        {...register('unlockUnit')}
-                        className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
-                      >
-                        {allowedUnlockUnits.map((u) => (
-                          <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
-                        ))}
-                      </select>
-                      {errors.unlockUnit && (
-                        <p className="text-sm text-red-600">{errors.unlockUnit.message as string}</p>
-                      )}
-                    </div>
+                  </div>
+
+                  {/* Unlock schedule under duration */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">Unlock Every</label>
+                    <select
+                      {...register('unlockUnit')}
+                      className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                    >
+                      {allowedUnlockUnits.map((u) => (
+                        <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
+                      ))}
+                    </select>
+                    {errors.unlockUnit && (
+                      <p className="text-sm text-red-600">{errors.unlockUnit.message as string}</p>
+                    )}
                   </div>
 
                   
