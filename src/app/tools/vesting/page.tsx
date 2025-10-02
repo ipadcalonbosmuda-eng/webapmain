@@ -167,9 +167,13 @@ export default function VestingPage() {
   const advancedCliffVal = Number(watch('advancedCliffValue') || 0) || 0;
   const advancedCliffUnit = (watch('advancedCliffUnit') as 'day'|'week'|'month'|'year');
   const cliffMonthsVal = (() => {
-    if (!watch('advancedEnabled') || !advancedCliffVal) {
-      // default: no cliff when advanced is off or value empty
-      return 0;
+    const advEnabled = watch('advancedEnabled');
+    if (!advEnabled || !advancedCliffVal) {
+      // default cliff = 1 interval of unlock unit
+      if (releaseUnit === 'day') return 1 / 30;
+      if (releaseUnit === 'week') return 7 / 30;
+      if (releaseUnit === 'year') return 12;
+      return 1; // month
     }
     if (advancedCliffUnit === 'day') return advancedCliffVal / 30;
     if (advancedCliffUnit === 'week') return (advancedCliffVal * 7) / 30;
@@ -589,7 +593,7 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{tokenName || tokenSymbol || vestedTokenAddress || '—'}</span></div>
                 <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
-                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsVal > 0 ? `${cliffMonthsVal} month(s)` : '—'}</span></div>
+                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsVal > 0 ? `${(Math.round(cliffMonthsVal * 10) / 10).toFixed(1)} month(s)` : '—'}</span></div>
                 <div className="flex justify-between"><span>Duration</span><span>{durationVal} {durationUnit}</span></div>
                 <div className="flex justify-between"><span>Vesting Periods</span><span>{vestingPeriods}</span></div>
                 <div className="flex justify-between"><span>Per-interval Release</span><span>{vestingPeriods > 0 ? `${perIntervalAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
