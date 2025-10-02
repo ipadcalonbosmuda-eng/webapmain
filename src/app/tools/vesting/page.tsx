@@ -358,7 +358,7 @@ export default function VestingPage() {
             </div>
 
           {/* Right: Helper Panel + Summary */}
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
             <div className="card p-6 space-y-3">
               <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
               <div className="text-sm text-gray-700 space-y-2">
@@ -373,7 +373,7 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>End (approx)</span><span>{endDate.toLocaleDateString()}</span></div>
               </div>
             </div>
-              <div className="card p-6 mt-4 space-y-4">
+              <div className="card p-6 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Guidelines</h3>
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
                   <li>`Cliff` is the delay before vesting starts.</li>
