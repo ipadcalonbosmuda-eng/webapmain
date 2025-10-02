@@ -430,11 +430,11 @@ export default function VestingPage() {
                     {fields.map((field, idx) => (
                       <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                         <div className="md:col-span-11">
-                          <FormField
-                            label={`Beneficiary ${idx + 1}`}
+                            <FormField
+                              label={`Address ${idx + 1}`}
                             placeholder="0x..."
                             error={errors.recipients?.[idx]?.beneficiary?.message}
-                            helperText={idx === 0 ? 'Address that will receive the vested tokens' : undefined}
+                              helperText={idx === 0 ? 'Wallet address that will receive the vested tokens' : undefined}
                             {...register(`recipients.${idx}.beneficiary`)}
                             required
                           />
