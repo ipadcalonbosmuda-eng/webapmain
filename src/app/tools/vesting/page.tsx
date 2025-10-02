@@ -190,7 +190,16 @@ export default function VestingPage() {
   const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { return formatUnits(perIntervalAmount, decimals); } catch { return perIntervalAmount.toString(); } })() : '-';
   const startDate = new Date();
   const endDate = new Date(startDate.getTime() + durationMonthsVal * SECONDS_PER_MONTH * 1000);
-  const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
+  const fmt = (d: Date) => {
+    const date = d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+    const offset = d.getTimezoneOffset();
+    const offsetHours = Math.floor(Math.abs(offset) / 60);
+    const offsetMinutes = Math.abs(offset) % 60;
+    const offsetSign = offset <= 0 ? '+' : '-';
+    const utcOffset = `UTC${offsetSign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')}`;
+    return `${date} ${time} (${utcOffset})`;
+  };
   const fmtAmount = (a: bigint) => {
     try {
       const raw = Number(formatUnits(a, decimals));
