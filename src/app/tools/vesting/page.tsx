@@ -187,7 +187,7 @@ export default function VestingPage() {
   const totalPeriods = Math.max(0, Math.floor((durationMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
   const vestingPeriods = Math.max(0, totalPeriods - cliffPeriods);
   const perIntervalAmount = vestingPeriods > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingPeriods)) : null;
-  const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { return formatUnits(perIntervalAmount, decimals); } catch { return perIntervalAmount.toString(); } })() : '-';
+  const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { const num = Number(formatUnits(perIntervalAmount, decimals)); return num.toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 }); } catch { return perIntervalAmount.toString(); } })() : '-';
   const now = Date.now();
   const startDate = new Date(now);
   const endDate = new Date(now + durationMonthsVal * SECONDS_PER_MONTH * 1000);
