@@ -157,11 +157,8 @@ export default function VestingPage() {
   const advancedCliffUnit = (watch('advancedCliffUnit') as 'day'|'week'|'month'|'year');
   const cliffMonthsVal = (() => {
     if (!watch('advancedEnabled') || !advancedCliffVal) {
-      // default 1 interval of unlockUnit converted to months
-      if (releaseUnit === 'day') return 1 / 30;
-      if (releaseUnit === 'week') return 7 / 30;
-      if (releaseUnit === 'year') return 12;
-      return 1; // month
+      // default: no cliff when advanced is off or value empty
+      return 0;
     }
     if (advancedCliffUnit === 'day') return advancedCliffVal / 30;
     if (advancedCliffUnit === 'week') return (advancedCliffVal * 7) / 30;
@@ -542,7 +539,7 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
                 <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
-                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsVal} month(s)</span></div>
+                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsVal > 0 ? `${cliffMonthsVal} month(s)` : '—'}</span></div>
                 <div className="flex justify-between"><span>Duration</span><span>{durationVal} {durationUnit}</span></div>
                 <div className="flex justify-between"><span>Vesting Periods</span><span>{vestingPeriods}</span></div>
                 <div className="flex justify-between"><span>Per-interval Release</span><span>{vestingPeriods > 0 ? `${perIntervalAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
