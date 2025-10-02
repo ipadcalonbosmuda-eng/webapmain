@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import Link from 'next/link';
 import { formatUnits, parseUnits } from 'viem';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
@@ -320,7 +321,6 @@ export default function VestingPage() {
             amountEach,
             BigInt(Math.max(0, Math.ceil(cliffMonthsVal))),
             BigInt(Math.max(1, Math.ceil(durationMonthsVal))),
-            0,
             custom as unknown as [],
           ],
         });
@@ -376,11 +376,12 @@ export default function VestingPage() {
     <RequireWallet>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Token Vesting</h1>
-            <p className="text-gray-600">
-              Create and manage token vesting schedules with custom cliff and duration periods.
-            </p>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Token Vesting</h1>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="font-semibold text-black">Create Vesting</span>
+              <Link href="/tools/vesting/my-vestings" className="text-gray-600 hover:text-gray-900 underline">My Vestings</Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

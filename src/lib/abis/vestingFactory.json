@@ -37,8 +37,7 @@
       { "indexed": false, "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "start", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "cliffMonths", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "durationMonths", "type": "uint256" },
-      { "indexed": false, "internalType": "enum PlasmaticVesting.ReleaseMode", "name": "mode", "type": "uint8" }
+      { "indexed": false, "internalType": "uint256", "name": "durationMonths", "type": "uint256" }
     ],
     "name": "ScheduleCreated",
     "type": "event"
@@ -68,7 +67,6 @@
       { "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
       { "internalType": "uint256", "name": "cliffMonths", "type": "uint256" },
       { "internalType": "uint256", "name": "durationMonths", "type": "uint256" },
-      { "internalType": "uint8", "name": "releaseMode", "type": "uint8" },
       {
         "components": [
           { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
