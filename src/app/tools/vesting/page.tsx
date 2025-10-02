@@ -103,6 +103,17 @@ export default function VestingPage() {
   });
   const tokenSymbol = (tokenSymbolData as unknown as string) ?? '';
 
+  // Try to read ERC20 name for friendlier display
+  const { data: tokenNameData } = useReadContract({
+    address: vestedTokenAddress,
+    abi: [
+      { inputs: [], name: 'name', outputs: [{ name: '', type: 'string' }], stateMutability: 'view', type: 'function' },
+    ],
+    functionName: 'name',
+    query: { enabled: !!vestedTokenAddress },
+  });
+  const tokenName = (tokenNameData as unknown as string) ?? '';
+
   const { data: walletBalanceData } = useReadContract({
     address: vestedTokenAddress,
     abi: [
@@ -536,7 +547,7 @@ export default function VestingPage() {
             <div className="card p-6 space-y-3">
               <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
               <div className="text-sm text-gray-700 space-y-2">
-                <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
+                <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{tokenName || tokenSymbol || vestedTokenAddress || '—'}</span></div>
                 <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
                 <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsVal > 0 ? `${cliffMonthsVal} month(s)` : '—'}</span></div>
