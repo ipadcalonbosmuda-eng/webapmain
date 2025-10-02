@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
@@ -10,11 +10,14 @@ import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
 import { explorerUrl } from '@/lib/utils';
 import vestingFactoryAbi from '@/lib/abis/vestingFactory.json';
+import { Plus, Trash2 } from 'lucide-react';
 
 const vestingSchema = z.object({
   tokenAddress: z.string().min(42, 'Invalid token address').max(42, 'Invalid token address'),
-  beneficiary: z.string().min(42, 'Invalid beneficiary address').max(42, 'Invalid beneficiary address'),
-  totalAmount: z.string().min(1, 'Total amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Total amount must be a positive number'),
+  recipients: z.array(z.object({
+    beneficiary: z.string().min(42, 'Invalid beneficiary address').max(42, 'Invalid beneficiary address'),
+    amount: z.string().min(1, 'Amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Amount must be a positive number'),
+  })).min(1, 'At least one recipient').max(20, 'Maximum 20 recipients'),
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
   durationMonths: z.string().min(1, 'Duration months is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration months must be a positive number'),
   releaseMode: z.enum(['0', '1']),
@@ -33,13 +36,17 @@ export default function VestingPage() {
     handleSubmit,
     formState: { errors },
     watch,
+    control,
+    setValue,
   } = useForm<VestingForm>({
     defaultValues: {
       tokenAddress: '',
-      beneficiary: address || '',
+      recipients: [{ beneficiary: address || '', amount: '' }],
       releaseMode: '0',
     },
   });
+
+  const { fields, append, remove } = useFieldArray({ control, name: 'recipients' });
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -111,8 +118,17 @@ export default function VestingPage() {
     }
   };
 
-  const totalAmountStr = watch('totalAmount');
-  const totalAmountParsed = parseUnitsSafe(totalAmountStr || undefined, decimals);
+  const recipientsWatch = watch('recipients') || [];
+  const totalAmountParsed = (() => {
+    try {
+      return recipientsWatch.reduce((sum: bigint, r: { amount?: string }) => {
+        const v = parseUnitsSafe(r?.amount, decimals);
+        return sum + (v ?? BigInt(0));
+      }, BigInt(0));
+    } catch {
+      return null;
+    }
+  })();
 
   const cliffMonthsNum = Number(watch('cliffMonths') || 0) || 0;
   const durationMonthsNum = Number(watch('durationMonths') || 0) || 0;
@@ -143,26 +159,30 @@ export default function VestingPage() {
 
     setIsLoading(true);
     try {
-      // Parse total amount to token units safely
-      const amountInUnits = parseUnitsSafe(data.totalAmount, decimals);
-      if (amountInUnits === null) {
-        addToast({ type: 'error', title: 'Invalid amount', description: 'Please enter a valid number.' });
+      // For ABI compatibility shown earlier, we create one schedule per recipient sequentially
+      const targets = (data.recipients || []).filter((r) => parseUnitsSafe(r?.amount, decimals) !== null);
+      if (targets.length === 0) {
+        addToast({ type: 'error', title: 'Invalid recipients', description: 'Please add at least one valid recipient and amount.' });
         return;
       }
-      writeContract({
+      for (const r of targets) {
+        const amountEach = parseUnitsSafe(r?.amount, decimals);
+        if (amountEach === null) continue;
+        await writeContract({
         address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
         abi: vestingFactoryAbi,
         functionName: 'createSchedule',
         args: [
           data.tokenAddress as `0x${string}`,
-          data.beneficiary as `0x${string}`,
-          amountInUnits,
+          r.beneficiary as `0x${string}`,
+          amountEach,
           BigInt(data.cliffMonths),
           BigInt(data.durationMonths),
           Number(data.releaseMode),
           [], // customReleases_
         ],
       });
+      }
     } catch (error) {
       console.error('Error creating vesting schedule:', error);
       addToast({
@@ -238,26 +258,58 @@ export default function VestingPage() {
                     />
                   </div>
 
-                  <div className="md:col-span-2">
-                    <FormField
-                      label="Beneficiary Address"
-                      placeholder="0x..."
-                      error={errors.beneficiary?.message}
-                      helperText="Address that will receive the vested tokens"
-                      {...register('beneficiary')}
-                      required
-                    />
-                  </div>
+                  {/* Dynamic Recipients */}
+                  <div className="md:col-span-2 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700">Recipients (max 20)</label>
+                      <button
+                        type="button"
+                        onClick={() => append({ beneficiary: '', amount: '' })}
+                        disabled={fields.length >= 20}
+                        className="btn-secondary text-xs"
+                      >
+                        Add Recipient
+                      </button>
+                    </div>
 
-                  <FormField
-                    label={`Total Amount${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
-                    error={errors.totalAmount?.message}
-                    helperText={`Total amount of tokens to be vested${vestedTokenAddress ? ` . Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : ''}`}
-                    inputMode="decimal"
-                    pattern="^\\d*(?:\\.\\d*)?$"
-                    {...register('totalAmount')}
-                    required
-                  />
+                    {fields.map((field, idx) => (
+                      <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                        <div className="md:col-span-7">
+                          <FormField
+                            label={`Beneficiary ${idx + 1}`}
+                            placeholder="0x..."
+                            error={errors.recipients?.[idx]?.beneficiary?.message}
+                            helperText={idx === 0 ? 'Address that will receive the vested tokens' : undefined}
+                            {...register(`recipients.${idx}.beneficiary`)}
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-4">
+                          <FormField
+                            label={`Amount${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
+                            error={errors.recipients?.[idx]?.amount?.message}
+                            helperText={idx === 0 && vestedTokenAddress ? `Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : undefined}
+                            inputMode="decimal"
+                            pattern="^\\d*(?:\\.\\d*)?$"
+                            {...register(`recipients.${idx}.amount`)}
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-1 flex md:justify-center">
+                          {fields.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => remove(idx)}
+                              className="p-2 text-red-600 hover:text-red-800"
+                              aria-label="Remove recipient"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
                   <FormField
                     label="Cliff Months"
@@ -363,8 +415,8 @@ export default function VestingPage() {
               <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
               <div className="text-sm text-gray-700 space-y-2">
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
-                <div className="flex justify-between"><span>Beneficiary</span><span className="font-mono break-all">{watch('beneficiary') || '—'}</span></div>
-                <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
+                <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
+                <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
                 <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsNum} months</span></div>
                 <div className="flex justify-between"><span>Duration</span><span>{durationMonthsNum} months</span></div>
                 <div className="flex justify-between"><span>Vesting Months</span><span>{vestingMonths}</span></div>
