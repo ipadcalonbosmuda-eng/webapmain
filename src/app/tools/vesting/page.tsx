@@ -380,7 +380,7 @@ export default function VestingPage() {
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Token Vesting</h1>
             <div className="flex items-center gap-4 text-sm">
               <span className="font-semibold text-black">Create Vesting</span>
-              <Link href="/tools/vesting/my-vestings" className="text-gray-600 hover:text-gray-900 underline">My Vestings</Link>
+              <Link href="/token-vesting/my-vesting" className="text-gray-600 hover:text-gray-900 underline">My Vestings</Link>
             </div>
           </div>
 

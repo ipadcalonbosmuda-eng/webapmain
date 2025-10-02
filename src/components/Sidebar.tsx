@@ -28,26 +28,26 @@ function isNavSection(item: NavItem): item is NavSection {
 }
 
 const navigation: NavItem[] = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Token Creation', href: '/tools/create-token', icon: Coins },
+  { name: 'Dashboard', href: '/dasboard', icon: LayoutDashboard },
+  { name: 'Token Creation', href: '/create-token', icon: Coins },
   {
     name: 'Token Locker',
     icon: Lock,
     children: [
-      { name: 'Token Lock', href: '/tools/token-locker' },
-      { name: 'My Lock', href: '/tools/token-locker/my-lock' },
+      { name: 'Token Lock', href: '/token-locker/token-lock' },
+      { name: 'My Lock', href: '/token-locker/my-lock' },
     ],
   },
-  { name: 'Liquidity Locker', href: '/tools/liquidity-locker', icon: Shield },
+  { name: 'Liquidity Locker', href: '/liquidity-locker', icon: Shield },
   {
     name: 'Token Vesting',
     icon: Calendar,
     children: [
-      { name: 'Create Vesting', href: '/tools/vesting' },
-      { name: 'My Vestings', href: '/tools/vesting/my-vestings' },
+      { name: 'Create Vesting', href: '/token-vesting/create-vesting' },
+      { name: 'My Vestings', href: '/token-vesting/my-vesting' },
     ],
   },
-  { name: 'Multi-Send', href: '/tools/multi-send', icon: Send },
+  { name: 'Multi-Send', href: '/multi-send', icon: Send },
 ];
 
 export function Sidebar() {
