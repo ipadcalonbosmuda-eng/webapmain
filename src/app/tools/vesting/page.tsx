@@ -166,25 +166,26 @@ export default function VestingPage() {
   // Default cliff: 1 interval of unlock unit unless advanced override provided
   const advancedCliffVal = Number(watch('advancedCliffValue') || 0) || 0;
   const advancedCliffUnit = (watch('advancedCliffUnit') as 'day'|'week'|'month'|'year');
+  const advEnabled = !!watch('advancedEnabled');
   const cliffMonthsVal = (() => {
-    const advEnabled = watch('advancedEnabled');
-    if (!advEnabled || !advancedCliffVal) {
-      // default cliff = 1 interval of unlock unit
-      if (releaseUnit === 'day') return 1 / 30;
-      if (releaseUnit === 'week') return 7 / 30;
-      if (releaseUnit === 'year') return 12;
-      return 1; // month
+    if (advEnabled) {
+      if (!advancedCliffVal) return 0; // advanced enabled but empty -> no cliff
+      if (advancedCliffUnit === 'day') return advancedCliffVal / 30;
+      if (advancedCliffUnit === 'week') return (advancedCliffVal * 7) / 30;
+      if (advancedCliffUnit === 'year') return advancedCliffVal * 12;
+      return advancedCliffVal; // month
     }
-    if (advancedCliffUnit === 'day') return advancedCliffVal / 30;
-    if (advancedCliffUnit === 'week') return (advancedCliffVal * 7) / 30;
-    if (advancedCliffUnit === 'year') return advancedCliffVal * 12;
-    return advancedCliffVal; // month
+    // Advanced off -> default 1 interval of unlock unit
+    if (releaseUnit === 'day') return 1 / 30;
+    if (releaseUnit === 'week') return 7 / 30;
+    if (releaseUnit === 'year') return 12;
+    return 1; // month
   })();
-  // Cliff display: unit follows Advanced selection if provided, otherwise follows unlock unit
-  const advEnabledForDisplay = !!watch('advancedEnabled');
-  const cliffDisplayUnit: 'day'|'week'|'month'|'year' = (advEnabledForDisplay && advancedCliffVal) ? advancedCliffUnit : releaseUnit;
-  const cliffDisplayValue = (advEnabledForDisplay && advancedCliffVal) ? advancedCliffVal : 1;
-  const fmt1 = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  // Cliff Summary text
+  const formatCount = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
+  const cliffSummaryText = advEnabled
+    ? (advancedCliffVal > 0 ? `${formatCount(advancedCliffVal)} ${advancedCliffUnit}` : '—')
+    : `1 ${releaseUnit}`;
   const durationVal = Number(watch('durationValue') || 0) || 0;
   const durationMonthsVal = (() => {
     if (durationUnit === 'day') return durationVal / 30;
@@ -598,7 +599,7 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{tokenName || tokenSymbol || vestedTokenAddress || '—'}</span></div>
                 <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
-                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsVal > 0 ? `${fmt1(cliffDisplayValue)} ${cliffDisplayUnit}` : '—'}</span></div>
+                <div className="flex justify-between"><span>Cliff</span><span>{cliffSummaryText}</span></div>
                 <div className="flex justify-between"><span>Duration</span><span>{durationVal} {durationUnit}</span></div>
                 <div className="flex justify-between"><span>Vesting Periods</span><span>{vestingPeriods}</span></div>
                 <div className="flex justify-between"><span>Per-interval Release</span><span>{vestingPeriods > 0 ? `${perIntervalAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
