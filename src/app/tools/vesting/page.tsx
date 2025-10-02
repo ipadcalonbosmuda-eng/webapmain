@@ -144,6 +144,9 @@ export default function VestingPage() {
 
   const durationUnit = (watch('durationUnit') as 'day'|'week'|'month'|'year');
   const releaseUnit = (watch('unlockUnit') as 'day'|'week'|'month'|'year');
+  const orderMap = { day: 0, week: 1, month: 2, year: 3 } as const;
+  const allUnits: Array<'day'|'week'|'month'|'year'> = ['day','week','month','year'];
+  const allowedUnlockUnits = allUnits.filter((u) => orderMap[u] <= orderMap[durationUnit]);
   const SECONDS_PER_DAY = 24 * 60 * 60;
   const SECONDS_PER_WEEK = 7 * SECONDS_PER_DAY;
   const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
@@ -168,9 +171,8 @@ export default function VestingPage() {
 
   // Enforce unlockUnit not coarser than durationUnit
   useEffect(() => {
-    const order = { day: 0, week: 1, month: 2, year: 3 } as const;
     const currUnlock = watch('unlockUnit') as 'day'|'week'|'month'|'year';
-    if (order[currUnlock] > order[durationUnit]) {
+    if (orderMap[currUnlock] > orderMap[durationUnit]) {
       setValue('unlockUnit', durationUnit);
     }
   }, [durationUnit, setValue, watch]);
@@ -427,10 +429,9 @@ export default function VestingPage() {
                         {...register('unlockUnit')}
                         className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
                       >
-                        <option value="day">Day</option>
-                        <option value="week">Week</option>
-                        <option value="month">Month</option>
-                        <option value="year">Year</option>
+                        {allowedUnlockUnits.map((u) => (
+                          <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
+                        ))}
                       </select>
                       {errors.unlockUnit && (
                         <p className="text-sm text-red-600">{errors.unlockUnit.message as string}</p>
