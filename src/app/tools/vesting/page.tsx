@@ -21,6 +21,9 @@ const vestingSchema = z.object({
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
   durationMonths: z.string().min(1, 'Duration months is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration months must be a positive number'),
   releaseMode: z.enum(['0', '1']),
+  advancedEnabled: z.boolean().optional(),
+  firstMonthPercent: z.string().optional(),
+  subsequentMonthPercent: z.string().optional(),
 });
 
 type VestingForm = z.infer<typeof vestingSchema>;
@@ -43,6 +46,9 @@ export default function VestingPage() {
       tokenAddress: '',
       recipients: [{ beneficiary: address || '', amount: '' }],
       releaseMode: '0',
+      advancedEnabled: false,
+      firstMonthPercent: '',
+      subsequentMonthPercent: '',
     },
   });
 
@@ -137,6 +143,7 @@ export default function VestingPage() {
   const monthlyAmountFormatted = monthlyAmount !== null ? (() => { try { return formatUnits(monthlyAmount, decimals); } catch { return monthlyAmount.toString(); } })() : '-';
   const startDate = new Date();
   const endDate = new Date(startDate.getTime() + durationMonthsNum * 30 * 24 * 60 * 60 * 1000);
+  const SECONDS_PER_MONTH = 30 * 24 * 60 * 60;
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -168,20 +175,50 @@ export default function VestingPage() {
       for (const r of targets) {
         const amountEach = parseUnitsSafe(r?.amount, decimals);
         if (amountEach === null) continue;
+        let custom: Array<{ timestamp: bigint; amount: bigint; claimed: boolean }> = [];
+        if (watch('advancedEnabled')) {
+          const firstPct = Number(watch('firstMonthPercent') || '0');
+          const nextPct = Number(watch('subsequentMonthPercent') || '0');
+          if (firstPct >= 0 && nextPct >= 0) {
+            const totalMonths = Number(data.durationMonths);
+            const firstAmt = (amountEach * BigInt(Math.round(firstPct * 100))) / BigInt(10000);
+            const remaining = amountEach - firstAmt;
+            const monthsAfterFirst = Math.max(0, totalMonths - 1);
+            let monthlyAmt = monthsAfterFirst > 0 ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : BigInt(0);
+            let sum = firstAmt;
+            // Build releases: first month
+            if (firstAmt > BigInt(0)) {
+              custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH), amount: firstAmt, claimed: false });
+            }
+            // Subsequent months
+            for (let i = 2; i <= totalMonths; i++) {
+              if (monthlyAmt === BigInt(0)) break;
+              let amt = monthlyAmt;
+              if (i === totalMonths) {
+                // Final correction to reach total
+                amt = amountEach - sum;
+              }
+              if (amt > BigInt(0)) {
+                custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH * i), amount: amt, claimed: false });
+                sum += amt;
+              }
+            }
+          }
+        }
         await writeContract({
-        address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
-        abi: vestingFactoryAbi,
-        functionName: 'createSchedule',
-        args: [
-          data.tokenAddress as `0x${string}`,
-          r.beneficiary as `0x${string}`,
-          amountEach,
-          BigInt(data.cliffMonths),
-          BigInt(data.durationMonths),
-          Number(data.releaseMode),
-          [], // customReleases_
-        ],
-      });
+          address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
+          abi: vestingFactoryAbi,
+          functionName: 'createSchedule',
+          args: [
+            data.tokenAddress as `0x${string}`,
+            r.beneficiary as `0x${string}`,
+            amountEach,
+            BigInt(data.cliffMonths),
+            BigInt(data.durationMonths),
+            Number(data.releaseMode),
+            custom as unknown as [],
+          ],
+        });
       }
     } catch (error) {
       console.error('Error creating vesting schedule:', error);
@@ -356,7 +393,35 @@ export default function VestingPage() {
                     )}
                   </div>
 
-                  <div className="md:col-span-2 pt-2">
+                  <div className="md:col-span-2 space-y-2">
+                    {/* Advanced Custom Release (optional) */}
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <label className="flex items-center gap-2 mb-3">
+                        <input type="checkbox" {...register('advancedEnabled')} className="h-4 w-4" />
+                        <span className="text-sm font-medium text-gray-900">Advanced custom release (optional)</span>
+                      </label>
+                      {watch('advancedEnabled') && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            label="First month unlock %"
+                            placeholder="e.g. 50"
+                            helperText="Percent of total that unlocks on first month (0-100)"
+                            inputMode="decimal"
+                            pattern="^\\d*(?:\\.\\d*)?$"
+                            {...register('firstMonthPercent')}
+                          />
+                          <FormField
+                            label="Subsequent monthly %"
+                            placeholder="e.g. 10"
+                            helperText="Percent per month after first month (0-100)"
+                            inputMode="decimal"
+                            pattern="^\\d*(?:\\.\\d*)?$"
+                            {...register('subsequentMonthPercent')}
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     <button
                       type="submit"
                       disabled={isLoading || isPending || isConfirming}
