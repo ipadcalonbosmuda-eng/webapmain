@@ -111,11 +111,11 @@ export default function VestingPage() {
     }
   };
 
-  const totalAmountStr = (typeof window !== 'undefined') ? (document.querySelector('input[name="totalAmount"]') as HTMLInputElement | null)?.value : undefined;
+  const totalAmountStr = watch('totalAmount');
   const totalAmountParsed = parseUnitsSafe(totalAmountStr || undefined, decimals);
 
-  const cliffMonthsNum = Number((typeof window !== 'undefined') ? (document.querySelector('input[name="cliffMonths"]') as HTMLInputElement | null)?.value : 0) || 0;
-  const durationMonthsNum = Number((typeof window !== 'undefined') ? (document.querySelector('input[name="durationMonths"]') as HTMLInputElement | null)?.value : 0) || 0;
+  const cliffMonthsNum = Number(watch('cliffMonths') || 0) || 0;
+  const durationMonthsNum = Number(watch('durationMonths') || 0) || 0;
   const vestingMonths = Math.max(0, durationMonthsNum - cliffMonthsNum);
   const monthlyAmount = vestingMonths > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingMonths)) : null;
   const monthlyAmountFormatted = monthlyAmount !== null ? (() => { try { return formatUnits(monthlyAmount, decimals); } catch { return monthlyAmount.toString(); } })() : '-';
@@ -372,7 +372,7 @@ export default function VestingPage() {
               <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
               <div className="text-sm text-gray-700 space-y-2">
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
-                <div className="flex justify-between"><span>Beneficiary</span><span className="font-mono break-all">{(document && (document.querySelector('input[name="beneficiary"]') as HTMLInputElement | null)?.value) || '—'}</span></div>
+                <div className="flex justify-between"><span>Beneficiary</span><span className="font-mono break-all">{watch('beneficiary') || '—'}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
                 <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsNum} months</span></div>
                 <div className="flex justify-between"><span>Duration</span><span>{durationMonthsNum} months</span></div>
