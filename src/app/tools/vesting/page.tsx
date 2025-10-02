@@ -139,8 +139,9 @@ export default function VestingPage() {
 
   const cliffMonthsNum = Number(watch('cliffMonths') || 0) || 0;
   const durationMonthsNum = Number(watch('durationMonths') || 0) || 0;
+  const isStep = watch('releaseMode') === '1';
   const vestingMonths = Math.max(0, durationMonthsNum - cliffMonthsNum);
-  const monthlyAmount = vestingMonths > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingMonths)) : null;
+  const monthlyAmount = isStep && vestingMonths > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingMonths)) : null;
   const monthlyAmountFormatted = monthlyAmount !== null ? (() => { try { return formatUnits(monthlyAmount, decimals); } catch { return monthlyAmount.toString(); } })() : '-';
   const startDate = new Date();
   const endDate = new Date(startDate.getTime() + durationMonthsNum * 30 * 24 * 60 * 60 * 1000);
@@ -177,15 +178,15 @@ export default function VestingPage() {
         const amountEach = parseUnitsSafe(r?.amount, decimals);
         if (amountEach === null) continue;
         const custom: Array<{ timestamp: bigint; amount: bigint; claimed: boolean }> = [];
-        if (watch('advancedEnabled')) {
+        if (watch('advancedEnabled') || watch('releaseMode') === '1') {
           const firstPct = Number(watch('firstMonthPercent') || '0');
           const nextPct = Number(watch('subsequentMonthPercent') || '0');
           if (firstPct >= 0 && nextPct >= 0) {
             const totalMonths = Number(data.durationMonths);
-            const firstAmt = (amountEach * BigInt(Math.round(firstPct * 100))) / BigInt(10000);
+            const firstAmt = watch('advancedEnabled') ? (amountEach * BigInt(Math.round(firstPct * 100))) / BigInt(10000) : BigInt(0);
             const remaining = amountEach - firstAmt;
             const monthsAfterFirst = Math.max(0, totalMonths - 1);
-            const monthlyAmt = monthsAfterFirst > 0 ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : BigInt(0);
+            const monthlyAmt = monthsAfterFirst > 0 ? (watch('advancedEnabled') ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : remaining / BigInt(monthsAfterFirst)) : BigInt(0);
             let sum = firstAmt;
             // Build releases: first month
             if (firstAmt > BigInt(0)) {
@@ -203,6 +204,18 @@ export default function VestingPage() {
                 custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH * i), amount: amt, claimed: false });
                 sum += amt;
               }
+            }
+          } else if (watch('releaseMode') === '1') {
+            // Default step mode: equal monthly releases after cliff
+            const totalMonths = Number(data.durationMonths);
+            const startMonth = 1; // first month after start
+            const months = Math.max(1, totalMonths);
+            const equalAmt = amountEach / BigInt(months);
+            let acc = BigInt(0);
+            for (let i = 1; i <= months; i++) {
+              let amt = i === months ? amountEach - acc : equalAmt;
+              custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH * i), amount: amt, claimed: false });
+              acc += amt;
             }
           }
         }
