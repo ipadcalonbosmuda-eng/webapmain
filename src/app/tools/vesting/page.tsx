@@ -575,33 +575,13 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>End (approx)</span><span>{endDate.toLocaleDateString()}</span></div>
               </div>
             </div>
-            {/* Claim schedule preview */}
+            {/* Claim schedule preview (first/last only) */}
             {schedulePreview.length > 0 && (
               <div className="card p-6 space-y-2">
                 <h3 className="text-lg font-semibold text-gray-900">Unlock Schedule Preview</h3>
-                <div className="text-sm text-gray-700">
+                <div className="text-sm text-gray-700 space-y-1">
                   <div className="flex justify-between"><span>First unlock</span><span>{new Date(schedulePreview[0].t * 1000).toLocaleString()} — {formatUnits(schedulePreview[0].amount, decimals)} {tokenSymbol}</span></div>
                   <div className="flex justify-between"><span>Last unlock</span><span>{new Date(schedulePreview[schedulePreview.length - 1].t * 1000).toLocaleString()} — {formatUnits(schedulePreview[schedulePreview.length - 1].amount, decimals)} {tokenSymbol}</span></div>
-                </div>
-                <div className="mt-3 max-h-44 overflow-auto border rounded-md">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 text-gray-700">
-                        <th className="px-3 py-2 text-left">#</th>
-                        <th className="px-3 py-2 text-left">When</th>
-                        <th className="px-3 py-2 text-left">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {schedulePreview.map((e, i) => (
-                        <tr key={i} className="border-t">
-                          <td className="px-3 py-2">{i + 1}</td>
-                          <td className="px-3 py-2">{new Date(e.t * 1000).toLocaleString()}</td>
-                          <td className="px-3 py-2">{formatUnits(e.amount, decimals)} {tokenSymbol}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             )}
