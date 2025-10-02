@@ -47,14 +47,16 @@ export default function MyVestingsPage() {
     (async () => {
       for (const id of scheduleIds) {
         try {
-          const res = await (window as any).wagmi?.readContract?.({
-            address: process.env.NEXT_PUBLIC_VESTING_FACTORY,
-            abi: vestingAbi,
+          const res = await (window as unknown as { wagmi?: { readContract?: (p: { address: string; abi: unknown; functionName: string; args: unknown[] }) => Promise<unknown> } }).wagmi?.readContract?.({
+            address: process.env.NEXT_PUBLIC_VESTING_FACTORY as string,
+            abi: vestingAbi as unknown,
             functionName: 'schedules',
-            args: [id],
+            args: [id as unknown as bigint],
           });
           if (res) setSchedules((prev) => [...prev, { id, s: res as Schedule }]);
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
     })();
   }, [scheduleIds]);
@@ -66,9 +68,9 @@ export default function MyVestingsPage() {
         const key = s.token.toLowerCase();
         if (decimalsMap[key] !== undefined) continue;
         try {
-          const dec = await (window as any).wagmi?.readContract?.({
-            address: s.token,
-            abi: [{ inputs: [], name: 'decimals', outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view', type: 'function' }],
+          const dec = await (window as unknown as { wagmi?: { readContract?: (p: { address: string; abi: unknown; functionName: string }) => Promise<unknown> } }).wagmi?.readContract?.({
+            address: s.token as unknown as string,
+            abi: [{ inputs: [], name: 'decimals', outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view', type: 'function' }] as unknown,
             functionName: 'decimals',
           });
           setDecimalsMap((m) => ({ ...m, [key]: Number(dec ?? 18) }));
@@ -77,7 +79,7 @@ export default function MyVestingsPage() {
         }
       }
     })();
-  }, [schedules]);
+  }, [schedules, decimalsMap]);
 
   const claim = async (id: bigint) => {
     await writeContract({

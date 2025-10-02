@@ -223,7 +223,7 @@ export default function VestingPage() {
     if (orderMap[currUnlock] > orderMap[durationUnit]) {
       setValue('unlockUnit', durationUnit);
     }
-  }, [durationUnit, setValue, watch]);
+  }, [durationUnit, setValue, watch, orderMap]);
 
   // Keep Advanced cliff unit in sync with Unlock Every
   useEffect(() => {
@@ -245,7 +245,7 @@ export default function VestingPage() {
       out.push({ t: startSec + unitSeconds * (i + 1), amount: base + extra });
     }
     return out;
-  }, [vestingPeriods, totalAmountParsed, unitSeconds, cliffMonthsVal]);
+  }, [vestingPeriods, totalAmountParsed, unitSeconds, cliffMonthsVal, SECONDS_PER_MONTH]);
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
