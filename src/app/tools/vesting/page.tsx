@@ -277,7 +277,7 @@ export default function VestingPage() {
             {/* Left: Form */}
             <div className="lg:col-span-8">
               <div className="card p-8">
-                <form onSubmit={handleSubmit(onSubmit as any)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Token Address */}
                   <div className="md:col-span-2">
                     <FormField
