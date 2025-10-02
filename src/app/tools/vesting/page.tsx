@@ -473,7 +473,7 @@ export default function VestingPage() {
                   </div>
 
                   {/* Unlock schedule under duration */}
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-1">
                     <label className="block text-sm font-medium text-gray-700">Unlock Every</label>
                     <select
                       {...register('unlockUnit')}
@@ -490,7 +490,7 @@ export default function VestingPage() {
 
                   
 
-                  <div className="md:col-span-2 space-y-2">
+                  <div className="md:col-span-1 space-y-2">
                     {/* Advanced settings (optional) */}
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <label className="flex items-center gap-2 mb-3">
