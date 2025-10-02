@@ -53,33 +53,18 @@
     "name": "TokensReleased",
     "type": "event"
   },
-  {
-    "inputs": [ { "internalType": "uint256", "name": "scheduleId", "type": "uint256" } ],
-    "name": "claim",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
+  { "inputs": [ { "internalType": "uint256", "name": "scheduleId", "type": "uint256" } ], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
   {
     "inputs": [
       { "internalType": "address", "name": "token", "type": "address" },
-      { "internalType": "address", "name": "beneficiary", "type": "address" },
+      { "internalType": "address[]", "name": "recipients", "type": "address[]" },
       { "internalType": "uint256", "name": "totalAmount", "type": "uint256" },
-      { "internalType": "uint256", "name": "cliffMonths", "type": "uint256" },
-      { "internalType": "uint256", "name": "durationMonths", "type": "uint256" },
-      {
-        "components": [
-          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-          { "internalType": "uint256", "name": "amount", "type": "uint256" },
-          { "internalType": "bool", "name": "claimed", "type": "bool" }
-        ],
-        "internalType": "struct PlasmaticVesting.CustomRelease[]",
-        "name": "customReleases_",
-        "type": "tuple[]"
-      }
+      { "internalType": "uint64", "name": "cliffSeconds", "type": "uint64" },
+      { "internalType": "uint64", "name": "durationSeconds", "type": "uint64" },
+      { "internalType": "uint64", "name": "intervalSeconds", "type": "uint64" }
     ],
-    "name": "createSchedule",
-    "outputs": [ { "internalType": "uint256", "name": "scheduleId", "type": "uint256" } ],
+    "name": "createSchedulesEqual",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },

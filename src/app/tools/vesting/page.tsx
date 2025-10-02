@@ -311,20 +311,23 @@ export default function VestingPage() {
             }
           }
         }
-        await writeContract({
-          address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
-          abi: vestingFactoryAbi,
-          functionName: 'createSchedule',
-          args: [
-            data.tokenAddress as `0x${string}`,
-            r.beneficiary as `0x${string}`,
-            amountEach,
-            BigInt(Math.max(0, Math.ceil(cliffMonthsVal))),
-            BigInt(Math.max(1, Math.ceil(durationMonthsVal))),
-            custom as unknown as [],
-          ],
-        });
+        // no per-recipient call here; we will do one batched call below
       }
+      // Batched create: equal split across recipients using step-based vesting
+      const recipients = targets.map((t) => t.beneficiary) as `0x${string}`[];
+      await writeContract({
+        address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
+        abi: vestingFactoryAbi,
+        functionName: 'createSchedulesEqual',
+        args: [
+          data.tokenAddress as `0x${string}`,
+          recipients,
+          totalUnits,
+          BigInt(Math.max(0, Math.floor(cliffMonthsVal * 30 * 24 * 60 * 60))),
+          BigInt(Math.max(1, Math.floor(durationMonthsVal * 30 * 24 * 60 * 60))),
+          BigInt(unitSeconds),
+        ],
+      });
     } catch (error) {
       console.error('Error creating vesting schedule:', error);
       addToast({

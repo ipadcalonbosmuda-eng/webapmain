@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-interface IERC20 {
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    function transfer(address to, uint256 amount) external returns (bool);
-}
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract PlasmaticVesting {
+contract PlasmaticVesting is ReentrancyGuard {
+    using SafeERC20 for IERC20;
 
     error InvalidParams();
+    error InvalidArrayLength();
+    error TooManyRecipients();
     error InvalidSchedule();
     error InvalidCustomSchedule();
     error NotBeneficiary();
     error NothingToRelease();
-    error TransferFailed();
 
     struct Schedule {
         address token;
         address beneficiary;
         uint256 totalAmount;
         uint256 released;
-        uint256 start;
-        uint256 cliffMonths;
-        uint256 durationMonths;
+        uint64 start;
+        uint64 cliffEnd;
+        uint64 duration;
+        uint64 interval;
         bool isActive;
     }
 
@@ -35,7 +37,7 @@ contract PlasmaticVesting {
     uint256 public nextScheduleId;
 
     mapping(uint256 => Schedule) public schedules;
-    mapping(uint256 => CustomRelease[]) public customReleases;
+    mapping(uint256 => CustomRelease[]) public customReleases; // deprecated for step schedules
     mapping(address => uint256[]) public userSchedules;
 
     event ScheduleCreated(
@@ -43,9 +45,10 @@ contract PlasmaticVesting {
         address indexed token,
         address indexed beneficiary,
         uint256 totalAmount,
-        uint256 start,
-        uint256 cliffMonths,
-        uint256 durationMonths
+        uint64 start,
+        uint64 cliffEnd,
+        uint64 duration,
+        uint64 interval
     );
 
     event CustomScheduleCreated(
@@ -60,66 +63,51 @@ contract PlasmaticVesting {
     event TokensReleased(uint256 indexed scheduleId, address indexed beneficiary, uint256 amount, uint256 remaining);
 
     uint256 private constant SECONDS_PER_MONTH = 30 days;
-
-    function createSchedule(
+    uint256 public constant DAY = 1 days;
+    uint256 public constant WEEK = 7 days;
+    uint256 public constant MONTH = 30 days;
+    uint256 public constant YEAR = 365 days;
+    function createSchedulesEqual(
         address token,
-        address beneficiary,
+        address[] calldata recipients,
         uint256 totalAmount,
-        uint256 cliffMonths,
-        uint256 durationMonths,
-        CustomRelease[] calldata customReleases_
-    ) external returns (uint256 scheduleId) {
-        if (token == address(0) || beneficiary == address(0) || totalAmount == 0) revert InvalidParams();
+        uint64 cliffSeconds,
+        uint64 durationSeconds,
+        uint64 intervalSeconds
+    ) external {
+        if (token == address(0) || totalAmount == 0) revert InvalidParams();
+        uint256 n = recipients.length;
+        if (n == 0) revert InvalidArrayLength();
+        if (n > 20) revert TooManyRecipients();
+        if (durationSeconds == 0 || intervalSeconds == 0 || durationSeconds % intervalSeconds != 0) revert InvalidSchedule();
 
-        if (customReleases_.length == 0) {
-            if (durationMonths == 0 || durationMonths <= cliffMonths) revert InvalidSchedule();
-        } else {
-            uint256 sum;
-            uint256 previousTs;
-            for (uint256 i = 0; i < customReleases_.length; i++) {
-                CustomRelease calldata r = customReleases_[i];
-                if (r.claimed) revert InvalidCustomSchedule();
-                if (i > 0 && r.timestamp <= previousTs) revert InvalidCustomSchedule();
-                previousTs = r.timestamp;
-                sum += r.amount;
-            }
-            if (sum != totalAmount) revert InvalidCustomSchedule();
-        }
+        IERC20(token).safeTransferFrom(msg.sender, address(this), totalAmount);
+        uint256 baseShare = totalAmount / n;
+        uint256 remainder = totalAmount % n;
+        uint64 startTs = uint64(block.timestamp);
+        uint64 cliffEnd = startTs + cliffSeconds;
 
-        if (!IERC20(token).transferFrom(msg.sender, address(this), totalAmount)) revert TransferFailed();
+        for (uint256 i = 0; i < n; i++) {
+            address beneficiary = recipients[i];
+            if (beneficiary == address(0)) revert InvalidParams();
 
-        scheduleId = ++nextScheduleId;
-        schedules[scheduleId] = Schedule({
-            token: token,
-            beneficiary: beneficiary,
-            totalAmount: totalAmount,
-            released: 0,
-            start: block.timestamp,
-            cliffMonths: cliffMonths,
-            durationMonths: durationMonths,
-            isActive: true
-        });
+            uint256 share = baseShare + (i < remainder ? 1 : 0);
+            uint256 id = ++nextScheduleId;
+            schedules[id] = Schedule({
+                token: token,
+                beneficiary: beneficiary,
+                totalAmount: share,
+                released: 0,
+                start: startTs,
+                cliffEnd: cliffEnd,
+                duration: durationSeconds,
+                interval: intervalSeconds,
+                isActive: true
+            });
 
-        userSchedules[msg.sender].push(scheduleId);
-        userSchedules[beneficiary].push(scheduleId);
-
-        if (customReleases_.length == 0) {
-            emit ScheduleCreated(
-                scheduleId,
-                token,
-                beneficiary,
-                totalAmount,
-                block.timestamp,
-                cliffMonths,
-                durationMonths
-            );
-        } else {
-            for (uint256 i = 0; i < customReleases_.length; i++) {
-                customReleases[scheduleId].push(
-                    CustomRelease({ timestamp: customReleases_[i].timestamp, amount: customReleases_[i].amount, claimed: false })
-                );
-            }
-            emit CustomScheduleCreated(scheduleId, token, beneficiary, totalAmount, block.timestamp, customReleases[scheduleId]);
+            userSchedules[beneficiary].push(id);
+            userSchedules[msg.sender].push(id);
+            emit ScheduleCreated(id, token, beneficiary, share, startTs, cliffEnd, durationSeconds, intervalSeconds);
         }
     }
 
@@ -135,58 +123,39 @@ contract PlasmaticVesting {
         Schedule memory s = schedules[scheduleId];
         if (s.totalAmount == 0 || !s.isActive) return 0;
 
-        if (customReleases[scheduleId].length > 0) {
-            uint256 claimable;
-            CustomRelease[] memory rs = customReleases[scheduleId];
-            for (uint256 i = 0; i < rs.length; i++) {
-                if (!rs[i].claimed && rs[i].timestamp <= block.timestamp) {
-                    claimable += rs[i].amount;
-                }
-            }
-            return claimable;
-        }
+        if (block.timestamp < s.cliffEnd) return 0;
 
-        uint256 start = s.start;
-        uint256 cliffTime = start + s.cliffMonths * SECONDS_PER_MONTH;
-        uint256 end = start + s.durationMonths * SECONDS_PER_MONTH;
-        if (block.timestamp < cliffTime) return 0;
-        if (block.timestamp >= end) return s.totalAmount - s.released;
+        uint256 totalSteps = uint256(s.duration) / uint256(s.interval);
+        if (totalSteps == 0) return 0;
 
-        // Always linear for standard schedules
-        uint256 linearDuration = end - cliffTime;
-        uint256 timeInto = block.timestamp - cliffTime;
-        uint256 vested = (s.totalAmount * timeInto) / linearDuration;
+        uint256 elapsedAfterCliff = uint256(block.timestamp) <= uint256(s.cliffEnd)
+            ? 0
+            : (uint256(block.timestamp) - uint256(s.cliffEnd));
+        uint256 maturedSteps = 1 + (elapsedAfterCliff / uint256(s.interval));
+        if (maturedSteps > totalSteps) maturedSteps = totalSteps;
+
+        uint256 basePerStep = s.totalAmount / totalSteps;
+        uint256 rem = s.totalAmount % totalSteps;
+        uint256 vested = basePerStep * maturedSteps + (maturedSteps < rem ? maturedSteps : rem);
         if (vested <= s.released) return 0;
         return vested - s.released;
     }
 
-    function claim(uint256 scheduleId) external {
+    function claim(uint256 scheduleId) external nonReentrant {
         Schedule storage s = schedules[scheduleId];
         if (s.totalAmount == 0) revert InvalidSchedule();
         if (msg.sender != s.beneficiary) revert NotBeneficiary();
 
-        uint256 amount;
-        if (customReleases[scheduleId].length > 0) {
-            CustomRelease[] storage rs = customReleases[scheduleId];
-            for (uint256 i = 0; i < rs.length; i++) {
-                if (!rs[i].claimed && rs[i].timestamp <= block.timestamp) {
-                    rs[i].claimed = true;
-                    amount += rs[i].amount;
-                }
-            }
-        } else {
-            amount = getClaimableAmount(scheduleId);
-            s.released += amount;
-        }
-
+        uint256 amount = getClaimableAmount(scheduleId);
         if (amount == 0) revert NothingToRelease();
 
-        if (!IERC20(s.token).transfer(s.beneficiary, amount)) revert TransferFailed();
-
-        if (s.released + amount >= s.totalAmount) {
+        s.released += amount;
+        if (s.released >= s.totalAmount) {
             s.isActive = false;
         }
-        emit TokensReleased(scheduleId, s.beneficiary, amount, s.totalAmount - (s.released + amount));
+
+        IERC20(s.token).safeTransfer(s.beneficiary, amount);
+        emit TokensReleased(scheduleId, s.beneficiary, amount, s.totalAmount - s.released);
     }
 }
 
