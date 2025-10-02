@@ -458,8 +458,8 @@ export default function VestingPage() {
                         required
                       />
                     </div>
-                    <div className="md:col-span-6">
-                      <label className="block text-sm font-medium text-gray-700">&nbsp;</label>
+                    <div className="md:col-span-6 flex flex-col justify-end">
+                      <label className="block text-sm font-medium text-gray-700 mt-[22px]">&nbsp;</label>
                       <select
                         {...register('durationUnit')}
                         className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
@@ -473,7 +473,7 @@ export default function VestingPage() {
                   </div>
 
                   {/* Unlock schedule under duration */}
-                  <div className="md:col-span-1">
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">Unlock Every</label>
                     <select
                       {...register('unlockUnit')}
@@ -490,7 +490,7 @@ export default function VestingPage() {
 
                   
 
-                  <div className="md:col-span-1 space-y-2">
+                  <div className="md:col-span-2 space-y-2">
                     {/* Advanced settings (optional) */}
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <label className="flex items-center gap-2 mb-3">
@@ -509,8 +509,8 @@ export default function VestingPage() {
                               {...register('advancedCliffValue')}
                             />
                           </div>
-                          <div className="md:col-span-6">
-                            <label className="block text-sm font-medium text-gray-700">&nbsp;</label>
+                          <div className="md:col-span-6 flex flex-col justify-end">
+                            <label className="block text-sm font-medium text-gray-700 mt-[22px]">&nbsp;</label>
                             <select
                               {...register('advancedCliffUnit')}
                               className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
