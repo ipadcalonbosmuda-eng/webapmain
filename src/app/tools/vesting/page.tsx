@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { formatUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
@@ -100,6 +100,28 @@ export default function VestingPage() {
     }
   })();
 
+  // Amount helpers and derived summary values
+  const parseUnitsSafe = (val?: string, dec?: number): bigint | null => {
+    try {
+      if (!val) return null;
+      if (!/^\d+(?:\.\d+)?$/.test(val)) return null;
+      return parseUnits(val, typeof dec === 'number' ? dec : 18);
+    } catch {
+      return null;
+    }
+  };
+
+  const totalAmountStr = (typeof window !== 'undefined') ? (document.querySelector('input[name="totalAmount"]') as HTMLInputElement | null)?.value : undefined;
+  const totalAmountParsed = parseUnitsSafe(totalAmountStr || undefined, decimals);
+
+  const cliffMonthsNum = Number((typeof window !== 'undefined') ? (document.querySelector('input[name="cliffMonths"]') as HTMLInputElement | null)?.value : 0) || 0;
+  const durationMonthsNum = Number((typeof window !== 'undefined') ? (document.querySelector('input[name="durationMonths"]') as HTMLInputElement | null)?.value : 0) || 0;
+  const vestingMonths = Math.max(0, durationMonthsNum - cliffMonthsNum);
+  const monthlyAmount = vestingMonths > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingMonths)) : null;
+  const monthlyAmountFormatted = monthlyAmount !== null ? (() => { try { return formatUnits(monthlyAmount, decimals); } catch { return monthlyAmount.toString(); } })() : '-';
+  const startDate = new Date();
+  const endDate = new Date(startDate.getTime() + durationMonthsNum * 30 * 24 * 60 * 60 * 1000);
+
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { ...toast, id, onClose: removeToast }]);
@@ -121,6 +143,12 @@ export default function VestingPage() {
 
     setIsLoading(true);
     try {
+      // Parse total amount to token units safely
+      const amountInUnits = parseUnitsSafe(data.totalAmount, decimals);
+      if (amountInUnits === null) {
+        addToast({ type: 'error', title: 'Invalid amount', description: 'Please enter a valid number.' });
+        return;
+      }
       writeContract({
         address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
         abi: vestingFactoryAbi,
@@ -128,7 +156,7 @@ export default function VestingPage() {
         args: [
           data.tokenAddress as `0x${string}`,
           data.beneficiary as `0x${string}`,
-          BigInt(data.totalAmount),
+          amountInUnits,
           BigInt(data.cliffMonths),
           BigInt(data.durationMonths),
           Number(data.releaseMode),
@@ -198,6 +226,18 @@ export default function VestingPage() {
             <div className="lg:col-span-8">
               <div className="card p-8">
                 <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Token Address */}
+                  <div className="md:col-span-2">
+                    <FormField
+                      label="Token Address"
+                      placeholder="0x..."
+                      error={errors.tokenAddress?.message}
+                      helperText="Token contract address to vest"
+                      {...register('tokenAddress')}
+                      required
+                    />
+                  </div>
+
                   <div className="md:col-span-2">
                     <FormField
                       label="Beneficiary Address"
@@ -211,16 +251,16 @@ export default function VestingPage() {
 
                   <FormField
                     label={`Total Amount${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
-                    placeholder="1000000"
                     error={errors.totalAmount?.message}
                     helperText={`Total amount of tokens to be vested${vestedTokenAddress ? ` . Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : ''}`}
+                    inputMode="decimal"
+                    pattern="^\\d*(?:\\.\\d*)?$"
                     {...register('totalAmount')}
                     required
                   />
 
                   <FormField
                     label="Cliff Months"
-                    placeholder="6"
                     error={errors.cliffMonths?.message}
                     helperText="Number of months before vesting starts (0 for immediate vesting)"
                     {...register('cliffMonths')}
@@ -229,7 +269,6 @@ export default function VestingPage() {
 
                   <FormField
                     label="Duration Months"
-                    placeholder="12"
                     error={errors.durationMonths?.message}
                     helperText="Total duration of the vesting schedule in months"
                     {...register('durationMonths')}
@@ -318,7 +357,7 @@ export default function VestingPage() {
               </div>
             </div>
 
-            {/* Right: Helper Panel */}
+          {/* Right: Helper Panel + Summary */}
             <div className="lg:col-span-4">
               <div className="card p-6 lg:sticky lg:top-24 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Guidelines</h3>
@@ -328,6 +367,21 @@ export default function VestingPage() {
                   <li>Choose the release mode that fits your distribution.</li>
                 </ul>
               </div>
+
+            <div className="card p-6 mt-4 space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
+              <div className="text-sm text-gray-700 space-y-2">
+                <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
+                <div className="flex justify-between"><span>Beneficiary</span><span className="font-mono break-all">{(document && (document.querySelector('input[name="beneficiary"]') as HTMLInputElement | null)?.value) || '—'}</span></div>
+                <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
+                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsNum} months</span></div>
+                <div className="flex justify-between"><span>Duration</span><span>{durationMonthsNum} months</span></div>
+                <div className="flex justify-between"><span>Vesting Months</span><span>{vestingMonths}</span></div>
+                <div className="flex justify-between"><span>Monthly Release</span><span>{vestingMonths > 0 ? `${monthlyAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
+                <div className="flex justify-between"><span>Start</span><span>{startDate.toLocaleDateString()}</span></div>
+                <div className="flex justify-between"><span>End (approx)</span><span>{endDate.toLocaleDateString()}</span></div>
+              </div>
+            </div>
             </div>
           </div>
         </div>
