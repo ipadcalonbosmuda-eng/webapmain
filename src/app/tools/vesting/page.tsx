@@ -19,13 +19,12 @@ const vestingSchema = z.object({
   recipients: z.array(z.object({
     beneficiary: z.string().min(42, 'Invalid beneficiary address').max(42, 'Invalid beneficiary address'),
   })).min(1, 'At least one recipient').max(20, 'Maximum 20 recipients'),
-  cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
   durationValue: z.string().min(1, 'Duration is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration must be a positive number'),
   durationUnit: z.enum(['day','week','month','year']),
   unlockUnit: z.enum(['day','week','month','year']),
   advancedEnabled: z.boolean().optional(),
-  firstMonthPercent: z.string().optional(),
-  subsequentMonthPercent: z.string().optional(),
+  advancedCliffValue: z.string().optional(),
+  advancedCliffUnit: z.enum(['day','week','month','year']).optional(),
 }).refine((data) => {
   const order = { day: 0, week: 1, month: 2, year: 3 } as const;
   return order[data.unlockUnit] <= order[data.durationUnit];
@@ -56,8 +55,8 @@ export default function VestingPage() {
       durationUnit: 'month',
       unlockUnit: 'month',
       advancedEnabled: false,
-      firstMonthPercent: '',
-      subsequentMonthPercent: '',
+      advancedCliffValue: '',
+      advancedCliffUnit: 'month',
     },
   });
 
@@ -153,7 +152,22 @@ export default function VestingPage() {
   const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
   const unitSeconds = releaseUnit === 'day' ? SECONDS_PER_DAY : releaseUnit === 'week' ? SECONDS_PER_WEEK : releaseUnit === 'year' ? SECONDS_PER_YEAR : SECONDS_PER_MONTH;
 
-  const cliffMonthsVal = Number(watch('cliffMonths') || 0) || 0;
+  // Default cliff: 1 interval of unlock unit unless advanced override provided
+  const advancedCliffVal = Number(watch('advancedCliffValue') || 0) || 0;
+  const advancedCliffUnit = (watch('advancedCliffUnit') as 'day'|'week'|'month'|'year');
+  const cliffMonthsVal = (() => {
+    if (!watch('advancedEnabled') || !advancedCliffVal) {
+      // default 1 interval of unlockUnit converted to months
+      if (releaseUnit === 'day') return 1 / 30;
+      if (releaseUnit === 'week') return 7 / 30;
+      if (releaseUnit === 'year') return 12;
+      return 1; // month
+    }
+    if (advancedCliffUnit === 'day') return advancedCliffVal / 30;
+    if (advancedCliffUnit === 'week') return (advancedCliffVal * 7) / 30;
+    if (advancedCliffUnit === 'year') return advancedCliffVal * 12;
+    return advancedCliffVal; // month
+  })();
   const durationVal = Number(watch('durationValue') || 0) || 0;
   const durationMonthsVal = (() => {
     if (durationUnit === 'day') return durationVal / 30;
@@ -219,22 +233,18 @@ export default function VestingPage() {
         if (remainder > BigInt(0)) remainder -= BigInt(1);
         const custom: Array<{ timestamp: bigint; amount: bigint; claimed: boolean }> = [];
         if (watch('advancedEnabled')) {
-          const firstPct = Number(watch('firstMonthPercent') || '0');
-          const nextPct = Number(watch('subsequentMonthPercent') || '0');
-          if (firstPct >= 0 && nextPct >= 0) {
+          // advanced cliff only; no percent logic now
+          if (true) {
             const totalPeriodsLocal = Math.max(0, Math.floor((durationMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
-            const firstAmt = watch('advancedEnabled') ? (amountEach * BigInt(Math.round(firstPct * 100))) / BigInt(10000) : BigInt(0);
+            const firstAmt = BigInt(0);
             const remaining = amountEach - firstAmt;
             const periodsAfterFirst = Math.max(0, totalPeriodsLocal - cliffPeriods - 1);
-            const perAmt = periodsAfterFirst > 0 ? (watch('advancedEnabled') ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : remaining / BigInt(periodsAfterFirst)) : BigInt(0);
+            const perAmt = periodsAfterFirst > 0 ? (remaining / BigInt(periodsAfterFirst)) : BigInt(0);
             let sum = firstAmt;
             // Build releases: first month
             const nowSec = Math.floor(Date.now() / 1000);
-            if (firstAmt > BigInt(0)) {
-              custom.push({ timestamp: BigInt(nowSec + cliffPeriods * unitSeconds + unitSeconds), amount: firstAmt, claimed: false });
-            }
-            // Subsequent intervals after the first
-            for (let i = 1; i <= periodsAfterFirst; i++) {
+            // Subsequent intervals after cliff (even if firstAmt=0)
+            for (let i = 0; i < periodsAfterFirst + 1; i++) {
               if (perAmt === BigInt(0)) break;
               const isLast = i === periodsAfterFirst;
               const amt = isLast ? (amountEach - sum) : perAmt;
@@ -253,7 +263,7 @@ export default function VestingPage() {
             data.tokenAddress as `0x${string}`,
             r.beneficiary as `0x${string}`,
             amountEach,
-            BigInt(data.cliffMonths),
+            BigInt(Math.max(0, Math.ceil(cliffMonthsVal))),
             BigInt(Math.max(1, Math.ceil(durationMonthsVal))),
             0,
             custom as unknown as [],
@@ -390,13 +400,7 @@ export default function VestingPage() {
                     ))}
                   </div>
 
-                  <FormField
-                    label="Cliff Months"
-                    error={errors.cliffMonths?.message}
-                    helperText="Number of months before vesting starts (0 for immediate vesting)"
-                    {...register('cliffMonths')}
-                    required
-                  />
+                  
 
                   {/* Vesting Duration (value + unit) */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:col-span-2">
@@ -444,30 +448,36 @@ export default function VestingPage() {
                   
 
                   <div className="md:col-span-2 space-y-2">
-                    {/* Advanced Custom Release (optional) */}
+                    {/* Advanced settings (optional) */}
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <label className="flex items-center gap-2 mb-3">
                         <input type="checkbox" {...register('advancedEnabled')} className="h-4 w-4" />
-                        <span className="text-sm font-medium text-gray-900">Advanced custom release (optional)</span>
+                        <span className="text-sm font-medium text-gray-900">Advanced settings (optional)</span>
                       </label>
                       {watch('advancedEnabled') && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField
-                            label="First month unlock %"
-                            placeholder="e.g. 50"
-                            helperText="Percent of total that unlocks on first month (0-100)"
-                            inputMode="decimal"
-                            pattern="^\\d*(?:\\.\\d*)?$"
-                            {...register('firstMonthPercent')}
-                          />
-                          <FormField
-                            label="Subsequent monthly %"
-                            placeholder="e.g. 10"
-                            helperText="Percent per month after first month (0-100)"
-                            inputMode="decimal"
-                            pattern="^\\d*(?:\\.\\d*)?$"
-                            {...register('subsequentMonthPercent')}
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                          <div className="md:col-span-6">
+                            <FormField
+                              label="Cliff"
+                              placeholder="e.g. 1"
+                              helperText="Delay before vesting starts"
+                              inputMode="decimal"
+                              pattern="^\\d*(?:\\.\\d*)?$"
+                              {...register('advancedCliffValue')}
+                            />
+                          </div>
+                          <div className="md:col-span-6">
+                            <label className="block text-sm font-medium text-gray-700">&nbsp;</label>
+                            <select
+                              {...register('advancedCliffUnit')}
+                              className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                            >
+                              <option value="day">Day</option>
+                              <option value="week">Week</option>
+                              <option value="month">Month</option>
+                              <option value="year">Year</option>
+                            </select>
+                          </div>
                         </div>
                       )}
                     </div>
