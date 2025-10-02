@@ -195,11 +195,7 @@ export default function VestingPage() {
             // Subsequent months
             for (let i = 2; i <= totalMonths; i++) {
               if (monthlyAmt === BigInt(0)) break;
-              let amt = monthlyAmt;
-              if (i === totalMonths) {
-                // Final correction to reach total
-                amt = amountEach - sum;
-              }
+              const amt = (i === totalMonths) ? (amountEach - sum) : monthlyAmt;
               if (amt > BigInt(0)) {
                 custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH * i), amount: amt, claimed: false });
                 sum += amt;
@@ -208,12 +204,11 @@ export default function VestingPage() {
           } else if (watch('releaseMode') === '1') {
             // Default step mode: equal monthly releases after cliff
             const totalMonths = Number(data.durationMonths);
-            const startMonth = 1; // first month after start
             const months = Math.max(1, totalMonths);
             const equalAmt = amountEach / BigInt(months);
             let acc = BigInt(0);
             for (let i = 1; i <= months; i++) {
-              let amt = i === months ? amountEach - acc : equalAmt;
+              const amt = i === months ? amountEach - acc : equalAmt;
               custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH * i), amount: amt, claimed: false });
               acc += amt;
             }
