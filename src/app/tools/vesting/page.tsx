@@ -142,13 +142,15 @@ export default function VestingPage() {
   const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
   const unitSeconds = unit === 'day' ? SECONDS_PER_DAY : unit === 'week' ? SECONDS_PER_WEEK : unit === 'year' ? SECONDS_PER_YEAR : SECONDS_PER_MONTH;
 
-  const cliffUnits = Number(watch('cliffMonths') || 0) || 0;
-  const durationUnits = Number(watch('durationMonths') || 0) || 0;
-  const vestingPeriods = Math.max(0, durationUnits - cliffUnits);
+  const cliffMonthsVal = Number(watch('cliffMonths') || 0) || 0;
+  const durationMonthsVal = Number(watch('durationMonths') || 0) || 0;
+  const cliffPeriods = Math.max(0, Math.floor((cliffMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
+  const totalPeriods = Math.max(0, Math.floor((durationMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
+  const vestingPeriods = Math.max(0, totalPeriods - cliffPeriods);
   const perIntervalAmount = vestingPeriods > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingPeriods)) : null;
   const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { return formatUnits(perIntervalAmount, decimals); } catch { return perIntervalAmount.toString(); } })() : '-';
   const startDate = new Date();
-  const endDate = new Date(startDate.getTime() + durationUnits * unitSeconds * 1000);
+  const endDate = new Date(startDate.getTime() + durationMonthsVal * SECONDS_PER_MONTH * 1000);
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -195,22 +197,24 @@ export default function VestingPage() {
           const firstPct = Number(watch('firstMonthPercent') || '0');
           const nextPct = Number(watch('subsequentMonthPercent') || '0');
           if (firstPct >= 0 && nextPct >= 0) {
-            const totalPeriods = durationUnits;
+            const totalPeriodsLocal = Math.max(0, Math.floor((durationMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
             const firstAmt = watch('advancedEnabled') ? (amountEach * BigInt(Math.round(firstPct * 100))) / BigInt(10000) : BigInt(0);
             const remaining = amountEach - firstAmt;
-            const periodsAfterFirst = Math.max(0, totalPeriods - 1);
+            const periodsAfterFirst = Math.max(0, totalPeriodsLocal - cliffPeriods - 1);
             const perAmt = periodsAfterFirst > 0 ? (watch('advancedEnabled') ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : remaining / BigInt(periodsAfterFirst)) : BigInt(0);
             let sum = firstAmt;
             // Build releases: first month
+            const nowSec = Math.floor(Date.now() / 1000);
             if (firstAmt > BigInt(0)) {
-              custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + unitSeconds), amount: firstAmt, claimed: false });
+              custom.push({ timestamp: BigInt(nowSec + cliffPeriods * unitSeconds + unitSeconds), amount: firstAmt, claimed: false });
             }
-            // Subsequent months
-            for (let i = 2; i <= totalPeriods; i++) {
+            // Subsequent intervals after the first
+            for (let i = 1; i <= periodsAfterFirst; i++) {
               if (perAmt === BigInt(0)) break;
-              const amt = (i === totalPeriods) ? (amountEach - sum) : perAmt;
+              const isLast = i === periodsAfterFirst;
+              const amt = isLast ? (amountEach - sum) : perAmt;
               if (amt > BigInt(0)) {
-                custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + unitSeconds * i), amount: amt, claimed: false });
+                custom.push({ timestamp: BigInt(nowSec + cliffPeriods * unitSeconds + unitSeconds * (i + 1)), amount: amt, claimed: false });
                 sum += amt;
               }
             }
@@ -224,8 +228,8 @@ export default function VestingPage() {
             data.tokenAddress as `0x${string}`,
             r.beneficiary as `0x${string}`,
             amountEach,
-            BigInt(Math.ceil(cliffUnits * unitSeconds / SECONDS_PER_MONTH)),
-            BigInt(Math.ceil(durationUnits * unitSeconds / SECONDS_PER_MONTH)),
+            BigInt(data.cliffMonths),
+            BigInt(data.durationMonths),
             0,
             custom as unknown as [],
           ],
@@ -480,8 +484,8 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
                 <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
-                <div className="flex justify-between"><span>Cliff</span><span>{cliffUnits} {unit}</span></div>
-                <div className="flex justify-between"><span>Duration</span><span>{durationUnits} {unit}</span></div>
+                <div className="flex justify-between"><span>Cliff</span><span>{cliffPeriods} {unit}</span></div>
+                <div className="flex justify-between"><span>Duration</span><span>{totalPeriods} {unit}</span></div>
                 <div className="flex justify-between"><span>Vesting Periods</span><span>{vestingPeriods}</span></div>
                 <div className="flex justify-between"><span>Per-interval Release</span><span>{vestingPeriods > 0 ? `${perIntervalAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
                 <div className="flex justify-between"><span>Start</span><span>{startDate.toLocaleDateString()}</span></div>
