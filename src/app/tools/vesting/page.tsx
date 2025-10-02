@@ -190,6 +190,15 @@ export default function VestingPage() {
   const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { return formatUnits(perIntervalAmount, decimals); } catch { return perIntervalAmount.toString(); } })() : '-';
   const startDate = new Date();
   const endDate = new Date(startDate.getTime() + durationMonthsVal * SECONDS_PER_MONTH * 1000);
+  const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
+  const fmtAmount = (a: bigint) => {
+    try {
+      const raw = Number(formatUnits(a, decimals));
+      return raw.toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    } catch {
+      return a.toString();
+    }
+  };
 
   // Enforce unlockUnit not coarser than durationUnit
   useEffect(() => {
@@ -571,8 +580,8 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>Duration</span><span>{durationVal} {durationUnit}</span></div>
                 <div className="flex justify-between"><span>Vesting Periods</span><span>{vestingPeriods}</span></div>
                 <div className="flex justify-between"><span>Per-interval Release</span><span>{vestingPeriods > 0 ? `${perIntervalAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
-                <div className="flex justify-between"><span>Start</span><span>{startDate.toLocaleDateString()}</span></div>
-                <div className="flex justify-between"><span>End (approx)</span><span>{endDate.toLocaleDateString()}</span></div>
+                <div className="flex justify-between"><span>Start</span><span>{fmt(startDate)}</span></div>
+                <div className="flex justify-between"><span>End (approx)</span><span>{fmt(endDate)}</span></div>
               </div>
             </div>
             {/* Claim schedule preview (first/last only) */}
@@ -580,8 +589,8 @@ export default function VestingPage() {
               <div className="card p-6 space-y-2">
                 <h3 className="text-lg font-semibold text-gray-900">Unlock Schedule Preview</h3>
                 <div className="text-sm text-gray-700 space-y-1">
-                  <div className="flex justify-between"><span>First unlock</span><span>{new Date(schedulePreview[0].t * 1000).toLocaleString()} — {formatUnits(schedulePreview[0].amount, decimals)} {tokenSymbol}</span></div>
-                  <div className="flex justify-between"><span>Last unlock</span><span>{new Date(schedulePreview[schedulePreview.length - 1].t * 1000).toLocaleString()} — {formatUnits(schedulePreview[schedulePreview.length - 1].amount, decimals)} {tokenSymbol}</span></div>
+                  <div className="flex justify-between"><span>First unlock</span><span>{fmt(new Date(schedulePreview[0].t * 1000))} — {fmtAmount(schedulePreview[0].amount)} {tokenSymbol}</span></div>
+                  <div className="flex justify-between"><span>Last unlock</span><span>{fmt(new Date(schedulePreview[schedulePreview.length - 1].t * 1000))} — {fmtAmount(schedulePreview[schedulePreview.length - 1].amount)} {tokenSymbol}</span></div>
                 </div>
               </div>
             )}
