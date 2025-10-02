@@ -224,6 +224,11 @@ export default function VestingPage() {
     }
   }, [durationUnit, setValue, watch]);
 
+  // Keep Advanced cliff unit in sync with Unlock Every
+  useEffect(() => {
+    setValue('advancedCliffUnit', releaseUnit);
+  }, [releaseUnit, setValue]);
+
   // Build preview unlock schedule (client-side)
   const schedulePreview = useMemo(() => {
     if (!vestingPeriods || vestingPeriods <= 0) return [] as Array<{ t: number; amount: bigint }>;
