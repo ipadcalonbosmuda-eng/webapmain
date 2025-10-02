@@ -21,7 +21,6 @@ const vestingSchema = z.object({
   })).min(1, 'At least one recipient').max(20, 'Maximum 20 recipients'),
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
   durationMonths: z.string().min(1, 'Duration months is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration months must be a positive number'),
-  releaseMode: z.enum(['0', '1']),
   advancedEnabled: z.boolean().optional(),
   firstMonthPercent: z.string().optional(),
   subsequentMonthPercent: z.string().optional(),
@@ -46,7 +45,6 @@ export default function VestingPage() {
     defaultValues: {
       tokenAddress: '',
       recipients: [{ beneficiary: address || '', amount: '' }],
-      releaseMode: '0',
       advancedEnabled: false,
       firstMonthPercent: '',
       subsequentMonthPercent: '',
@@ -139,9 +137,8 @@ export default function VestingPage() {
 
   const cliffMonthsNum = Number(watch('cliffMonths') || 0) || 0;
   const durationMonthsNum = Number(watch('durationMonths') || 0) || 0;
-  const isStep = watch('releaseMode') === '1';
   const vestingMonths = Math.max(0, durationMonthsNum - cliffMonthsNum);
-  const monthlyAmount = isStep && vestingMonths > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingMonths)) : null;
+  const monthlyAmount = vestingMonths > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingMonths)) : null;
   const monthlyAmountFormatted = monthlyAmount !== null ? (() => { try { return formatUnits(monthlyAmount, decimals); } catch { return monthlyAmount.toString(); } })() : '-';
   const startDate = new Date();
   const endDate = new Date(startDate.getTime() + durationMonthsNum * 30 * 24 * 60 * 60 * 1000);
@@ -178,7 +175,7 @@ export default function VestingPage() {
         const amountEach = parseUnitsSafe(r?.amount, decimals);
         if (amountEach === null) continue;
         const custom: Array<{ timestamp: bigint; amount: bigint; claimed: boolean }> = [];
-        if (watch('advancedEnabled') || watch('releaseMode') === '1') {
+        if (watch('advancedEnabled')) {
           const firstPct = Number(watch('firstMonthPercent') || '0');
           const nextPct = Number(watch('subsequentMonthPercent') || '0');
           if (firstPct >= 0 && nextPct >= 0) {
@@ -201,17 +198,6 @@ export default function VestingPage() {
                 sum += amt;
               }
             }
-          } else if (watch('releaseMode') === '1') {
-            // Default step mode: equal monthly releases after cliff
-            const totalMonths = Number(data.durationMonths);
-            const months = Math.max(1, totalMonths);
-            const equalAmt = amountEach / BigInt(months);
-            let acc = BigInt(0);
-            for (let i = 1; i <= months; i++) {
-              const amt = i === months ? amountEach - acc : equalAmt;
-              custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH * i), amount: amt, claimed: false });
-              acc += amt;
-            }
           }
         }
         await writeContract({
@@ -224,7 +210,7 @@ export default function VestingPage() {
             amountEach,
             BigInt(data.cliffMonths),
             BigInt(data.durationMonths),
-            Number(data.releaseMode),
+            0,
             custom as unknown as [],
           ],
         });
@@ -291,7 +277,7 @@ export default function VestingPage() {
             {/* Left: Form */}
             <div className="lg:col-span-8">
               <div className="card p-8">
-                <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit(onSubmit as any)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Token Address */}
                   <div className="md:col-span-2">
                     <FormField
@@ -373,34 +359,7 @@ export default function VestingPage() {
                     required
                   />
 
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Release Mode <span className="text-red-500">*</span>
-                    </label>
-                    <div className="space-y-2">
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          value="0"
-                          {...register('releaseMode')}
-                          className="mr-2"
-                        />
-                        <span className="text-sm text-gray-700">Linear (continuous release)</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          value="1"
-                          {...register('releaseMode')}
-                          className="mr-2"
-                        />
-                        <span className="text-sm text-gray-700">Step (monthly releases)</span>
-                      </label>
-                    </div>
-                    {errors.releaseMode && (
-                      <p className="text-sm text-red-600">{errors.releaseMode.message}</p>
-                    )}
-                  </div>
+                  
 
                   <div className="md:col-span-2 space-y-2">
                     {/* Advanced Custom Release (optional) */}
