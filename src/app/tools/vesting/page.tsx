@@ -175,17 +175,14 @@ export default function VestingPage() {
       if (advancedCliffUnit === 'year') return advancedCliffVal * 12;
       return advancedCliffVal; // month
     }
-    // Advanced off -> default 1 interval of unlock unit
-    if (releaseUnit === 'day') return 1 / 30;
-    if (releaseUnit === 'week') return 7 / 30;
-    if (releaseUnit === 'year') return 12;
-    return 1; // month
+    // Advanced off -> no cliff
+    return 0;
   })();
   // Cliff Summary text
   const formatCount = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
   const cliffSummaryText = advEnabled
     ? (advancedCliffVal > 0 ? `${formatCount(advancedCliffVal)} ${advancedCliffUnit}` : '—')
-    : `1 ${releaseUnit}`;
+    : '—';
   const durationVal = Number(watch('durationValue') || 0) || 0;
   const durationMonthsVal = (() => {
     if (durationUnit === 'day') return durationVal / 30;
