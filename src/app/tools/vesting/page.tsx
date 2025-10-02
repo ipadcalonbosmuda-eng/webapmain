@@ -32,6 +32,7 @@ export default function VestingPage() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
   } = useForm<VestingForm>({
     defaultValues: {
       tokenAddress: '',
@@ -58,8 +59,7 @@ export default function VestingPage() {
   });
 
   // Detect selected token from form and show available wallet balance
-  const { watch } = require('react-hook-form');
-  const tokenAddress = (watch as any)('tokenAddress') as string | undefined;
+  const tokenAddress = watch('tokenAddress') as string | undefined;
   const vestedTokenAddress = tokenAddress && tokenAddress.length === 42 ? (tokenAddress as `0x${string}`) : undefined;
 
   const { data: tokenDecimals } = useReadContract({
