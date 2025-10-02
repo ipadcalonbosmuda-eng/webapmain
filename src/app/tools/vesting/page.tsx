@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,10 +22,14 @@ const vestingSchema = z.object({
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
   durationValue: z.string().min(1, 'Duration is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration must be a positive number'),
   durationUnit: z.enum(['day','week','month','year']),
+  unlockUnit: z.enum(['day','week','month','year']),
   advancedEnabled: z.boolean().optional(),
   firstMonthPercent: z.string().optional(),
   subsequentMonthPercent: z.string().optional(),
-});
+}).refine((data) => {
+  const order = { day: 0, week: 1, month: 2, year: 3 } as const;
+  return order[data.unlockUnit] <= order[data.durationUnit];
+}, { message: 'Unlock frequency must be equal or shorter than duration', path: ['unlockUnit'] });
 
 type VestingForm = z.infer<typeof vestingSchema>;
 
@@ -41,6 +45,7 @@ export default function VestingPage() {
     formState: { errors },
     watch,
     control,
+    setValue,
   } = useForm<VestingForm>({
     resolver: zodResolver(vestingSchema),
     defaultValues: {
@@ -49,6 +54,7 @@ export default function VestingPage() {
       recipients: [{ beneficiary: address || '' }],
       durationValue: '1',
       durationUnit: 'month',
+      unlockUnit: 'month',
       advancedEnabled: false,
       firstMonthPercent: '',
       subsequentMonthPercent: '',
@@ -136,19 +142,20 @@ export default function VestingPage() {
     }
   })();
 
-  const unit = (watch('durationUnit') as 'day'|'week'|'month'|'year');
+  const durationUnit = (watch('durationUnit') as 'day'|'week'|'month'|'year');
+  const releaseUnit = (watch('unlockUnit') as 'day'|'week'|'month'|'year');
   const SECONDS_PER_DAY = 24 * 60 * 60;
   const SECONDS_PER_WEEK = 7 * SECONDS_PER_DAY;
   const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
   const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
-  const unitSeconds = unit === 'day' ? SECONDS_PER_DAY : unit === 'week' ? SECONDS_PER_WEEK : unit === 'year' ? SECONDS_PER_YEAR : SECONDS_PER_MONTH;
+  const unitSeconds = releaseUnit === 'day' ? SECONDS_PER_DAY : releaseUnit === 'week' ? SECONDS_PER_WEEK : releaseUnit === 'year' ? SECONDS_PER_YEAR : SECONDS_PER_MONTH;
 
   const cliffMonthsVal = Number(watch('cliffMonths') || 0) || 0;
   const durationVal = Number(watch('durationValue') || 0) || 0;
   const durationMonthsVal = (() => {
-    if (unit === 'day') return durationVal / 30;
-    if (unit === 'week') return (durationVal * 7) / 30;
-    if (unit === 'year') return durationVal * 12;
+    if (durationUnit === 'day') return durationVal / 30;
+    if (durationUnit === 'week') return (durationVal * 7) / 30;
+    if (durationUnit === 'year') return durationVal * 12;
     return durationVal; // month
   })();
   const cliffPeriods = Math.max(0, Math.floor((cliffMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
@@ -158,6 +165,15 @@ export default function VestingPage() {
   const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { return formatUnits(perIntervalAmount, decimals); } catch { return perIntervalAmount.toString(); } })() : '-';
   const startDate = new Date();
   const endDate = new Date(startDate.getTime() + durationMonthsVal * SECONDS_PER_MONTH * 1000);
+
+  // Enforce unlockUnit not coarser than durationUnit
+  useEffect(() => {
+    const order = { day: 0, week: 1, month: 2, year: 3 } as const;
+    const currUnlock = watch('unlockUnit') as 'day'|'week'|'month'|'year';
+    if (order[currUnlock] > order[durationUnit]) {
+      setValue('unlockUnit', durationUnit);
+    }
+  }, [durationUnit, setValue, watch]);
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -393,7 +409,7 @@ export default function VestingPage() {
                         required
                       />
                     </div>
-                    <div className="md:col-span-6">
+                    <div className="md:col-span-3">
                       <label className="block text-sm font-medium text-gray-700">&nbsp;</label>
                       <select
                         {...register('durationUnit')}
@@ -404,6 +420,21 @@ export default function VestingPage() {
                         <option value="month">Month</option>
                         <option value="year">Year</option>
                       </select>
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-gray-700">Unlock Every</label>
+                      <select
+                        {...register('unlockUnit')}
+                        className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                      >
+                        <option value="day">Day</option>
+                        <option value="week">Week</option>
+                        <option value="month">Month</option>
+                        <option value="year">Year</option>
+                      </select>
+                      {errors.unlockUnit && (
+                        <p className="text-sm text-red-600">{errors.unlockUnit.message as string}</p>
+                      )}
                     </div>
                   </div>
 
@@ -498,8 +529,8 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
                 <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
-                <div className="flex justify-between"><span>Cliff</span><span>{cliffPeriods} {unit}</span></div>
-                <div className="flex justify-between"><span>Duration</span><span>{totalPeriods} {unit}</span></div>
+                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsVal} month(s)</span></div>
+                <div className="flex justify-between"><span>Duration</span><span>{durationVal} {durationUnit}</span></div>
                 <div className="flex justify-between"><span>Vesting Periods</span><span>{vestingPeriods}</span></div>
                 <div className="flex justify-between"><span>Per-interval Release</span><span>{vestingPeriods > 0 ? `${perIntervalAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
                 <div className="flex justify-between"><span>Start</span><span>{startDate.toLocaleDateString()}</span></div>
