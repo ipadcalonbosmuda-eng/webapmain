@@ -34,7 +34,7 @@ const navigation: NavItem[] = [
     name: 'Token Locker',
     icon: Lock,
     children: [
-      { name: 'Token Lock', href: '/token-locker/token-lock' },
+      { name: 'Create Locks', href: '/token-locker/token-lock' },
       { name: 'My Lock', href: '/token-locker/my-lock' },
     ],
   },
