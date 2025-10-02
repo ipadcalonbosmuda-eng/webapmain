@@ -15,9 +15,9 @@ import { Trash2 } from 'lucide-react';
 
 const vestingSchema = z.object({
   tokenAddress: z.string().min(42, 'Invalid token address').max(42, 'Invalid token address'),
+  totalAmount: z.string().min(1, 'Total amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Total amount must be a positive number'),
   recipients: z.array(z.object({
     beneficiary: z.string().min(42, 'Invalid beneficiary address').max(42, 'Invalid beneficiary address'),
-    amount: z.string().min(1, 'Amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Amount must be a positive number'),
   })).min(1, 'At least one recipient').max(20, 'Maximum 20 recipients'),
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
   durationMonths: z.string().min(1, 'Duration months is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration months must be a positive number'),
@@ -45,7 +45,8 @@ export default function VestingPage() {
     resolver: zodResolver(vestingSchema),
     defaultValues: {
       tokenAddress: '',
-      recipients: [{ beneficiary: address || '', amount: '' }],
+      totalAmount: '',
+      recipients: [{ beneficiary: address || '' }],
       frequency: 'month',
       advancedEnabled: false,
       firstMonthPercent: '',
@@ -128,10 +129,7 @@ export default function VestingPage() {
   const recipientsWatch = watch('recipients') || [];
   const totalAmountParsed = (() => {
     try {
-      return recipientsWatch.reduce((sum: bigint, r: { amount?: string }) => {
-        const v = parseUnitsSafe(r?.amount, decimals);
-        return sum + (v ?? BigInt(0));
-      }, BigInt(0));
+      return parseUnitsSafe(watch('totalAmount'), decimals);
     } catch {
       return null;
     }
@@ -174,14 +172,24 @@ export default function VestingPage() {
     setIsLoading(true);
     try {
       // For ABI compatibility shown earlier, we create one schedule per recipient sequentially
-      const targets = (data.recipients || []).filter((r) => parseUnitsSafe(r?.amount, decimals) !== null);
+      const targets = (data.recipients || []);
       if (targets.length === 0) {
         addToast({ type: 'error', title: 'Invalid recipients', description: 'Please add at least one valid recipient and amount.' });
         return;
       }
-      for (const r of targets) {
-        const amountEach = parseUnitsSafe(r?.amount, decimals);
-        if (amountEach === null) continue;
+      const totalUnits = parseUnitsSafe(data.totalAmount, decimals);
+      if (totalUnits === null) {
+        addToast({ type: 'error', title: 'Invalid amount', description: 'Please enter a valid total amount.' });
+        return;
+      }
+      const count = targets.length;
+      const baseShare = totalUnits / BigInt(count);
+      let remainder = totalUnits - baseShare * BigInt(count);
+      for (let idx = 0; idx < targets.length; idx++) {
+        const r = targets[idx];
+        const extra = remainder > BigInt(0) ? BigInt(1) : BigInt(0);
+        const amountEach = baseShare + extra;
+        if (remainder > BigInt(0)) remainder -= BigInt(1);
         const custom: Array<{ timestamp: bigint; amount: bigint; claimed: boolean }> = [];
         if (watch('advancedEnabled')) {
           const firstPct = Number(watch('firstMonthPercent') || '0');
@@ -298,13 +306,26 @@ export default function VestingPage() {
                     />
                   </div>
 
+                  {/* Total Amount */}
+                  <div className="md:col-span-2">
+                    <FormField
+                      label={`Total Amount${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
+                      error={errors.totalAmount?.message}
+                      helperText={vestedTokenAddress ? `Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : ''}
+                      inputMode="decimal"
+                      pattern="^\\d*(?:\\.\\d*)?$"
+                      {...register('totalAmount')}
+                      required
+                    />
+                  </div>
+
                   {/* Dynamic Recipients */}
                   <div className="md:col-span-2 space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-gray-700">Recipients (max 20)</label>
                       <button
                         type="button"
-                        onClick={() => append({ beneficiary: '', amount: '' })}
+                        onClick={() => append({ beneficiary: '' })}
                         disabled={fields.length >= 20}
                         className="btn-secondary text-xs"
                       >
@@ -314,24 +335,13 @@ export default function VestingPage() {
 
                     {fields.map((field, idx) => (
                       <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                        <div className="md:col-span-7">
+                        <div className="md:col-span-11">
                           <FormField
                             label={`Beneficiary ${idx + 1}`}
                             placeholder="0x..."
                             error={errors.recipients?.[idx]?.beneficiary?.message}
                             helperText={idx === 0 ? 'Address that will receive the vested tokens' : undefined}
                             {...register(`recipients.${idx}.beneficiary`)}
-                            required
-                          />
-                        </div>
-                        <div className="md:col-span-4">
-                          <FormField
-                            label={`Amount${tokenSymbol ? ` (${tokenSymbol})` : ''}`}
-                            error={errors.recipients?.[idx]?.amount?.message}
-                            helperText={idx === 0 && vestedTokenAddress ? `Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : undefined}
-                            inputMode="decimal"
-                            pattern="^\\d*(?:\\.\\d*)?$"
-                            {...register(`recipients.${idx}.amount`)}
                             required
                           />
                         </div>
