@@ -608,7 +608,6 @@ export default function VestingPage() {
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
                   <li>`Cliff` is the delay before vesting starts.</li>
                   <li>`Duration` is the total length of the vesting schedule.</li>
-                  <li>Choose the release mode that fits your distribution.</li>
                 </ul>
               </div>
             </div>
