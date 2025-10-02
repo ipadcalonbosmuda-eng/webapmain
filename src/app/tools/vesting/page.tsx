@@ -188,17 +188,17 @@ export default function VestingPage() {
   const vestingPeriods = Math.max(0, totalPeriods - cliffPeriods);
   const perIntervalAmount = vestingPeriods > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingPeriods)) : null;
   const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { return formatUnits(perIntervalAmount, decimals); } catch { return perIntervalAmount.toString(); } })() : '-';
-  const startDate = new Date();
-  const endDate = new Date(startDate.getTime() + durationMonthsVal * SECONDS_PER_MONTH * 1000);
+  const now = Date.now();
+  const startDate = new Date(now);
+  const endDate = new Date(now + durationMonthsVal * SECONDS_PER_MONTH * 1000);
   const fmt = (d: Date) => {
-    const date = d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-    const offset = d.getTimezoneOffset();
-    const offsetHours = Math.floor(Math.abs(offset) / 60);
-    const offsetMinutes = Math.abs(offset) % 60;
-    const offsetSign = offset <= 0 ? '+' : '-';
-    const utcOffset = `UTC${offsetSign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')}`;
-    return `${date} ${time} (${utcOffset})`;
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mon = monthNames[d.getUTCMonth()];
+    const yyyy = d.getUTCFullYear();
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${dd} ${mon} ${yyyy}, ${hh}:${mm} UTC`;
   };
   const fmtAmount = (a: bigint) => {
     try {
