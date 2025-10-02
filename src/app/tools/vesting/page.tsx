@@ -374,7 +374,7 @@ export default function VestingPage() {
                   />
 
                   <FormField
-                    label="Duration Months"
+                    label="Release Duration Months"
                     error={errors.durationMonths?.message}
                     helperText="Total duration of the vesting schedule"
                     {...register('durationMonths')}
