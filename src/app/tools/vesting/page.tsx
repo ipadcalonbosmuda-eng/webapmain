@@ -20,8 +20,8 @@ const vestingSchema = z.object({
     beneficiary: z.string().min(42, 'Invalid beneficiary address').max(42, 'Invalid beneficiary address'),
   })).min(1, 'At least one recipient').max(20, 'Maximum 20 recipients'),
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
-  durationMonths: z.string().min(1, 'Duration months is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration months must be a positive number'),
-  frequency: z.enum(['day','week','month','year']),
+  durationValue: z.string().min(1, 'Duration is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration must be a positive number'),
+  durationUnit: z.enum(['day','week','month','year']),
   advancedEnabled: z.boolean().optional(),
   firstMonthPercent: z.string().optional(),
   subsequentMonthPercent: z.string().optional(),
@@ -47,7 +47,8 @@ export default function VestingPage() {
       tokenAddress: '',
       totalAmount: '',
       recipients: [{ beneficiary: address || '' }],
-      frequency: 'month',
+      durationValue: '1',
+      durationUnit: 'month',
       advancedEnabled: false,
       firstMonthPercent: '',
       subsequentMonthPercent: '',
@@ -135,7 +136,7 @@ export default function VestingPage() {
     }
   })();
 
-  const unit = (watch('frequency') as 'day'|'week'|'month'|'year');
+  const unit = (watch('durationUnit') as 'day'|'week'|'month'|'year');
   const SECONDS_PER_DAY = 24 * 60 * 60;
   const SECONDS_PER_WEEK = 7 * SECONDS_PER_DAY;
   const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
@@ -143,7 +144,13 @@ export default function VestingPage() {
   const unitSeconds = unit === 'day' ? SECONDS_PER_DAY : unit === 'week' ? SECONDS_PER_WEEK : unit === 'year' ? SECONDS_PER_YEAR : SECONDS_PER_MONTH;
 
   const cliffMonthsVal = Number(watch('cliffMonths') || 0) || 0;
-  const durationMonthsVal = Number(watch('durationMonths') || 0) || 0;
+  const durationVal = Number(watch('durationValue') || 0) || 0;
+  const durationMonthsVal = (() => {
+    if (unit === 'day') return durationVal / 30;
+    if (unit === 'week') return (durationVal * 7) / 30;
+    if (unit === 'year') return durationVal * 12;
+    return durationVal; // month
+  })();
   const cliffPeriods = Math.max(0, Math.floor((cliffMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
   const totalPeriods = Math.max(0, Math.floor((durationMonthsVal * SECONDS_PER_MONTH) / unitSeconds));
   const vestingPeriods = Math.max(0, totalPeriods - cliffPeriods);
@@ -229,7 +236,7 @@ export default function VestingPage() {
             r.beneficiary as `0x${string}`,
             amountEach,
             BigInt(data.cliffMonths),
-            BigInt(data.durationMonths),
+            BigInt(Math.max(1, Math.ceil(durationMonthsVal))),
             0,
             custom as unknown as [],
           ],
@@ -373,27 +380,34 @@ export default function VestingPage() {
                     required
                   />
 
-                  <FormField
-                    label="Duration Months"
-                    error={errors.durationMonths?.message}
-                    helperText="Total duration of the vesting schedule"
-                    {...register('durationMonths')}
-                    required
-                  />
-
-                  {/* Frequency selector */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">Release Frequency</label>
-                    <select
-                      {...register('frequency')}
-                      className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
-                    >
-                      <option value="day">Per Day</option>
-                      <option value="week">Per Week</option>
-                      <option value="month">Per Month</option>
-                      <option value="year">Per Year</option>
-                    </select>
+                  {/* Vesting Duration (value + unit) */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:col-span-2">
+                    <div className="md:col-span-6">
+                      <FormField
+                        label="Vesting Duration"
+                        error={errors.durationValue?.message}
+                        helperText="Length of the vesting schedule"
+                        inputMode="decimal"
+                        pattern="^\\d*(?:\\.\\d*)?$"
+                        {...register('durationValue')}
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-6">
+                      <label className="block text-sm font-medium text-gray-700">&nbsp;</label>
+                      <select
+                        {...register('durationUnit')}
+                        className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                      >
+                        <option value="day">Day</option>
+                        <option value="week">Week</option>
+                        <option value="month">Month</option>
+                        <option value="year">Year</option>
+                      </select>
+                    </div>
                   </div>
+
+                  
 
                   <div className="md:col-span-2 space-y-2">
                     {/* Advanced Custom Release (optional) */}
