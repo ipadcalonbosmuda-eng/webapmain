@@ -21,6 +21,7 @@ const vestingSchema = z.object({
   })).min(1, 'At least one recipient').max(20, 'Maximum 20 recipients'),
   cliffMonths: z.string().min(0, 'Cliff months must be 0 or greater').refine((val) => !isNaN(Number(val)) && Number(val) >= 0, 'Cliff months must be a valid number'),
   durationMonths: z.string().min(1, 'Duration months is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Duration months must be a positive number'),
+  frequency: z.enum(['day','week','month','year']),
   advancedEnabled: z.boolean().optional(),
   firstMonthPercent: z.string().optional(),
   subsequentMonthPercent: z.string().optional(),
@@ -45,6 +46,7 @@ export default function VestingPage() {
     defaultValues: {
       tokenAddress: '',
       recipients: [{ beneficiary: address || '', amount: '' }],
+      frequency: 'month',
       advancedEnabled: false,
       firstMonthPercent: '',
       subsequentMonthPercent: '',
@@ -135,14 +137,20 @@ export default function VestingPage() {
     }
   })();
 
-  const cliffMonthsNum = Number(watch('cliffMonths') || 0) || 0;
-  const durationMonthsNum = Number(watch('durationMonths') || 0) || 0;
-  const vestingMonths = Math.max(0, durationMonthsNum - cliffMonthsNum);
-  const monthlyAmount = vestingMonths > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingMonths)) : null;
-  const monthlyAmountFormatted = monthlyAmount !== null ? (() => { try { return formatUnits(monthlyAmount, decimals); } catch { return monthlyAmount.toString(); } })() : '-';
+  const unit = (watch('frequency') as 'day'|'week'|'month'|'year');
+  const SECONDS_PER_DAY = 24 * 60 * 60;
+  const SECONDS_PER_WEEK = 7 * SECONDS_PER_DAY;
+  const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
+  const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
+  const unitSeconds = unit === 'day' ? SECONDS_PER_DAY : unit === 'week' ? SECONDS_PER_WEEK : unit === 'year' ? SECONDS_PER_YEAR : SECONDS_PER_MONTH;
+
+  const cliffUnits = Number(watch('cliffMonths') || 0) || 0;
+  const durationUnits = Number(watch('durationMonths') || 0) || 0;
+  const vestingPeriods = Math.max(0, durationUnits - cliffUnits);
+  const perIntervalAmount = vestingPeriods > 0 && totalAmountParsed ? (totalAmountParsed / BigInt(vestingPeriods)) : null;
+  const perIntervalAmountFormatted = perIntervalAmount !== null ? (() => { try { return formatUnits(perIntervalAmount, decimals); } catch { return perIntervalAmount.toString(); } })() : '-';
   const startDate = new Date();
-  const endDate = new Date(startDate.getTime() + durationMonthsNum * 30 * 24 * 60 * 60 * 1000);
-  const SECONDS_PER_MONTH = 30 * 24 * 60 * 60;
+  const endDate = new Date(startDate.getTime() + durationUnits * unitSeconds * 1000);
 
   const addToast = (toast: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -179,22 +187,22 @@ export default function VestingPage() {
           const firstPct = Number(watch('firstMonthPercent') || '0');
           const nextPct = Number(watch('subsequentMonthPercent') || '0');
           if (firstPct >= 0 && nextPct >= 0) {
-            const totalMonths = Number(data.durationMonths);
+            const totalPeriods = durationUnits;
             const firstAmt = watch('advancedEnabled') ? (amountEach * BigInt(Math.round(firstPct * 100))) / BigInt(10000) : BigInt(0);
             const remaining = amountEach - firstAmt;
-            const monthsAfterFirst = Math.max(0, totalMonths - 1);
-            const monthlyAmt = monthsAfterFirst > 0 ? (watch('advancedEnabled') ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : remaining / BigInt(monthsAfterFirst)) : BigInt(0);
+            const periodsAfterFirst = Math.max(0, totalPeriods - 1);
+            const perAmt = periodsAfterFirst > 0 ? (watch('advancedEnabled') ? (remaining * BigInt(Math.round(nextPct * 100))) / BigInt(10000) : remaining / BigInt(periodsAfterFirst)) : BigInt(0);
             let sum = firstAmt;
             // Build releases: first month
             if (firstAmt > BigInt(0)) {
-              custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH), amount: firstAmt, claimed: false });
+              custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + unitSeconds), amount: firstAmt, claimed: false });
             }
             // Subsequent months
-            for (let i = 2; i <= totalMonths; i++) {
-              if (monthlyAmt === BigInt(0)) break;
-              const amt = (i === totalMonths) ? (amountEach - sum) : monthlyAmt;
+            for (let i = 2; i <= totalPeriods; i++) {
+              if (perAmt === BigInt(0)) break;
+              const amt = (i === totalPeriods) ? (amountEach - sum) : perAmt;
               if (amt > BigInt(0)) {
-                custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + SECONDS_PER_MONTH * i), amount: amt, claimed: false });
+                custom.push({ timestamp: BigInt(Math.floor(Date.now() / 1000) + unitSeconds * i), amount: amt, claimed: false });
                 sum += amt;
               }
             }
@@ -208,8 +216,8 @@ export default function VestingPage() {
             data.tokenAddress as `0x${string}`,
             r.beneficiary as `0x${string}`,
             amountEach,
-            BigInt(data.cliffMonths),
-            BigInt(data.durationMonths),
+            BigInt(Math.ceil(cliffUnits * unitSeconds / SECONDS_PER_MONTH)),
+            BigInt(Math.ceil(durationUnits * unitSeconds / SECONDS_PER_MONTH)),
             0,
             custom as unknown as [],
           ],
@@ -354,12 +362,24 @@ export default function VestingPage() {
                   <FormField
                     label="Duration Months"
                     error={errors.durationMonths?.message}
-                    helperText="Total duration of the vesting schedule in months"
+                    helperText="Total duration of the vesting schedule"
                     {...register('durationMonths')}
                     required
                   />
 
-                  
+                  {/* Frequency selector */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">Release Frequency</label>
+                    <select
+                      {...register('frequency')}
+                      className="w-full h-12 px-4 rounded-md bg-gray-100 text-black border-2 border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 transition-colors"
+                    >
+                      <option value="day">Per Day</option>
+                      <option value="week">Per Week</option>
+                      <option value="month">Per Month</option>
+                      <option value="year">Per Year</option>
+                    </select>
+                  </div>
 
                   <div className="md:col-span-2 space-y-2">
                     {/* Advanced Custom Release (optional) */}
@@ -450,10 +470,10 @@ export default function VestingPage() {
                 <div className="flex justify-between"><span>Token</span><span className="font-mono break-all">{vestedTokenAddress || '—'}</span></div>
                 <div className="flex justify-between"><span>Recipients</span><span>{Array.isArray(recipientsWatch) ? recipientsWatch.length : 0}</span></div>
                 <div className="flex justify-between"><span>Total</span><span>{totalAmountParsed !== null ? formatUnits(totalAmountParsed, decimals) : '—'} {tokenSymbol}</span></div>
-                <div className="flex justify-between"><span>Cliff</span><span>{cliffMonthsNum} months</span></div>
-                <div className="flex justify-between"><span>Duration</span><span>{durationMonthsNum} months</span></div>
-                <div className="flex justify-between"><span>Vesting Months</span><span>{vestingMonths}</span></div>
-                <div className="flex justify-between"><span>Monthly Release</span><span>{vestingMonths > 0 ? `${monthlyAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
+                <div className="flex justify-between"><span>Cliff</span><span>{cliffUnits} {unit}</span></div>
+                <div className="flex justify-between"><span>Duration</span><span>{durationUnits} {unit}</span></div>
+                <div className="flex justify-between"><span>Vesting Periods</span><span>{vestingPeriods}</span></div>
+                <div className="flex justify-between"><span>Per-interval Release</span><span>{vestingPeriods > 0 ? `${perIntervalAmountFormatted} ${tokenSymbol}` : '—'}</span></div>
                 <div className="flex justify-between"><span>Start</span><span>{startDate.toLocaleDateString()}</span></div>
                 <div className="flex justify-between"><span>End (approx)</span><span>{endDate.toLocaleDateString()}</span></div>
               </div>
