@@ -71,6 +71,11 @@ export function Sidebar() {
     setOpenSections((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
+  // Reset mobile menu when pathname changes
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
   return (
     <>
       {/* Mobile menu button */}
@@ -101,7 +106,11 @@ export function Sidebar() {
                           'w-full flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                           isSectionActive ? 'bg-[#00FF85] text-black' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                         )}
-                        onClick={() => toggleSection(item.name)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleSection(item.name);
+                        }}
                       >
                         <item.icon
                           className={cn(
@@ -130,7 +139,12 @@ export function Sidebar() {
                                   'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                                   isActive ? 'bg-[#00FF85] text-black' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                 )}
-                                onClick={() => setIsOpen(false)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setIsOpen(false);
+                                  // Force navigation
+                                  window.location.href = child.href;
+                                }}
                               >
                                 <span className="mr-3 h-5 w-5" />
                                 {child.name}
@@ -156,7 +170,12 @@ export function Sidebar() {
                         ? 'bg-[#00FF85] text-black'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     )}
-                    onClick={() => setIsOpen(false)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsOpen(false);
+                      // Force navigation
+                      window.location.href = link.href;
+                    }}
                   >
                     <link.icon
                       className={cn(
