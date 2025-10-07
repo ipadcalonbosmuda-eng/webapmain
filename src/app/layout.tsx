@@ -21,7 +21,7 @@ const ppMoriSemiBold = localFont({
 
 export const metadata: Metadata = {
   title: 'Plasmatic Tools',
-  description: 'Professional Web3 tools for token creation, locking, vesting, and more on Plasma Mainnet Beta.',
+  description: 'Tools for Token Creation, Locking, Vesting, and more on Plasma Mainnet Beta. Built for developers, teams, and projects that need reliable blockchain infrastructure.',
   icons: {
     icon: '/favicon.svg',
   },

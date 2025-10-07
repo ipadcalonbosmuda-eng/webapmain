@@ -45,7 +45,6 @@ export function useMyLocks() {
           functionName: "locksOf",
           args: [address],
         })) as bigint[];
-        console.log('[MyLock] locksOf ->', lockIds?.length);
 
         // Fallback A: if locksOf returns empty (older deployments), scan all locks by nextLockId
         if (!lockIds || lockIds.length === 0) {
@@ -116,7 +115,6 @@ export function useMyLocks() {
               owner: arr?.[4] as `0x${string}`,
             };
           })();
-          console.log('[MyLock] lock', String(id), 'owner', info.owner);
 
           // Skip locks that don't belong to the current user (in case of fallback scan)
           if (info.owner.toLowerCase() !== address.toLowerCase()) {
