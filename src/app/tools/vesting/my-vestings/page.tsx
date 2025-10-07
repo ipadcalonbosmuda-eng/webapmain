@@ -128,7 +128,7 @@ export default function MyVestingsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
+    <div className="max-w-6xl mx-auto p-8 relative z-0">
       <h1 className="text-2xl font-bold mb-4">My Vestings</h1>
       {schedules.length === 0 ? (
         <p className="text-gray-600">No vesting schedules found.</p>
