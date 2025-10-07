@@ -39,7 +39,6 @@ export function useMyLocks() {
       setError(null);
       try {
         const abi = tokenLockerAbi as unknown as Abi;
-        console.log('[MyLock] start', { address, CONTRACT_ADDRESS });
         let lockIds = (await client.readContract({
           address: CONTRACT_ADDRESS,
           abi,

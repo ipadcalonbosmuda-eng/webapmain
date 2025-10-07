@@ -44,16 +44,6 @@ export default function CreateTokenPage() {
     hash,
   });
 
-  // Add contract diagnostic info (run once on mount)
-  const contractAddress = process.env.NEXT_PUBLIC_TOKEN_FACTORY;
-  
-  useEffect(() => {
-    console.log('🔍 Contract Diagnostic:', {
-      address: contractAddress,
-      addressValid: contractAddress?.startsWith('0x') && contractAddress.length === 42,
-      timestamp: new Date().toISOString()
-    });
-  }, []); // Empty dependency array = run once on mount
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));

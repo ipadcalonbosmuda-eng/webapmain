@@ -4,7 +4,7 @@ import { ArrowRight, Coins, Lock, Shield, Calendar, Send } from 'lucide-react';
 const tools = [
   {
     name: 'Token Creation',
-    description: 'Create custom ERC-20 tokens on Plasma Mainnet Beta',
+    description: 'Create custom tokens on Plasma Mainnet Beta',
     href: '/tools/create-token',
     icon: Coins,
     color: 'bg-[#00FF85]',
