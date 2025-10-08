@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useSendTransaction } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useSendTransaction, useReadContract } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { FileDrop } from '@/components/FileDrop';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
-import { explorerUrl, parseCSV, parseJSON, isValidAddress } from '@/lib/utils';
+import { explorerUrl, parseCSV, parseJSON, isValidAddress, formatUnits, parseEther } from '@/lib/utils';
 import multiSendAbi from '@/lib/abis/multiSend.json';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -56,6 +56,14 @@ export default function MultiSendPage() {
   const { sendTransaction, isPending: isSendPending } = useSendTransaction();
   const { data: hash, isPending: isConfirming, isSuccess, isError } = useWaitForTransactionReceipt({
     hash: undefined, // Will be set dynamically
+  });
+
+  // Read fee amount from contract
+  const { data: feeAmount } = useReadContract({
+    address: process.env.NEXT_PUBLIC_MULTISEND as `0x${string}`,
+    abi: multiSendAbi,
+    functionName: 'feeAmount',
+    query: { enabled: !!process.env.NEXT_PUBLIC_MULTISEND },
   });
 
   const {
@@ -192,7 +200,7 @@ export default function MultiSendPage() {
               abi: multiSendAbi,
               functionName: 'multiSendNative',
               args: [addresses, amounts],
-              value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)), // Total amount to send
+              value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)) + ((feeAmount as bigint) ?? parseEther('1')), // Total amount + fee
             });
           } catch (firstError) {
             console.log('multiSendNative failed, trying multiSend:', firstError);
@@ -201,7 +209,7 @@ export default function MultiSendPage() {
               abi: multiSendAbi,
               functionName: 'multiSend',
               args: [addresses, amounts],
-              value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)), // Total amount to send
+              value: amounts.reduce((sum, amount) => sum + amount, BigInt(0)) + ((feeAmount as bigint) ?? parseEther('1')), // Total amount + fee
             });
           }
 
@@ -260,6 +268,7 @@ export default function MultiSendPage() {
             abi: multiSendAbi,
             functionName: 'multiSendToken',
             args: [data.tokenAddress as `0x${string}`, addresses, tokenAmounts],
+            value: (feeAmount as bigint) ?? parseEther('1'), // Fee for token multi-send
           });
 
           addToast({
@@ -443,6 +452,15 @@ export default function MultiSendPage() {
             <div className="lg:col-span-4">
               <div className="card p-6 lg:sticky lg:top-24 space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
+                
+                {/* Fee Information */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Multi-Send Fee</h4>
+                  <p className="text-sm text-blue-700">
+                    A fee of {feeAmount ? formatUnits(feeAmount as bigint, 18) : '1'} XPL will be charged for each multi-send operation.
+                  </p>
+                </div>
+
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <p className="text-sm text-gray-600">Token Type</p>
                   <p className="text-lg font-bold text-gray-900">
@@ -452,6 +470,14 @@ export default function MultiSendPage() {
                   <p className="text-2xl font-bold text-gray-900">{recipients.length}</p>
                   <p className="text-sm text-gray-600 mt-4">Estimated Total</p>
                   <p className="text-2xl font-bold text-gray-900">{totalAmount.toLocaleString()} tokens</p>
+                  {watch('tokenType') === 'native' && (
+                    <>
+                      <p className="text-sm text-gray-600 mt-4">Total XPL Required</p>
+                      <p className="text-lg font-bold text-gray-900">
+                        {(totalAmount + (feeAmount ? Number(formatUnits(feeAmount as bigint, 18)) : 1)).toLocaleString()} XPL
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div className={`border rounded-lg p-4 ${
                   process.env.NEXT_PUBLIC_MULTISEND 
@@ -471,6 +497,9 @@ export default function MultiSendPage() {
                 </div>
                 <div className="text-sm text-gray-600">
                   Import supports CSV and JSON. Ensure amounts are in token units.
+                  <br />
+                  <br />
+                  <strong>Note:</strong> Make sure you have enough XPL for the multi-send fee.
                 </div>
               </div>
             </div>
