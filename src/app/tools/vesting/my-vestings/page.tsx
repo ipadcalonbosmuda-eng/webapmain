@@ -50,7 +50,7 @@ export default function MyVestingsPage() {
     }
     
     let isMounted = true;
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | undefined;
     
     (async () => {
       const newSchedules: Array<{ id: bigint; s: Schedule }> = [];
@@ -72,13 +72,17 @@ export default function MyVestingsPage() {
           });
           
           const res = await Promise.race([promise, timeoutPromise]);
-          clearTimeout(timeoutId);
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           
           if (res && isMounted) {
             newSchedules.push({ id, s: res as Schedule });
           }
         } catch (error) {
-          clearTimeout(timeoutId);
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           console.warn('Failed to fetch schedule:', id, error);
         }
       }
@@ -90,7 +94,9 @@ export default function MyVestingsPage() {
     
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [scheduleIds]);
 
