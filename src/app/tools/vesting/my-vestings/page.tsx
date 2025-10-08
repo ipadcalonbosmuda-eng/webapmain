@@ -86,10 +86,14 @@ export default function MyVestingsPage() {
   useEffect(() => {
     if (schedules.length === 0) return;
     
+    let isMounted = true;
+    
     (async () => {
       const newDecimalsMap: Record<string, number> = {};
       
       for (const { s } of schedules) {
+        if (!isMounted) break;
+        
         const key = s.token.toLowerCase();
         if (decimalsMap[key] !== undefined) continue;
         
@@ -99,17 +103,25 @@ export default function MyVestingsPage() {
             abi: [{ inputs: [], name: 'decimals', outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view', type: 'function' }] as unknown,
             functionName: 'decimals',
           });
-          newDecimalsMap[key] = Number(dec ?? 18);
+          if (isMounted) {
+            newDecimalsMap[key] = Number(dec ?? 18);
+          }
         } catch {
-          newDecimalsMap[key] = 18;
+          if (isMounted) {
+            newDecimalsMap[key] = 18;
+          }
         }
       }
       
-      if (Object.keys(newDecimalsMap).length > 0) {
+      if (isMounted && Object.keys(newDecimalsMap).length > 0) {
         setDecimalsMap((m) => ({ ...m, ...newDecimalsMap }));
       }
     })();
-  }, [schedules.length]); // Only depend on schedules.length to prevent infinite loop
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [schedules.length, decimalsMap]); // Add decimalsMap to dependencies but with proper cleanup
 
   const claim = async (id: bigint) => {
     try {
@@ -128,7 +140,7 @@ export default function MyVestingsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-8 relative z-0">
+    <div className="max-w-6xl mx-auto p-8 relative z-0 pointer-events-auto">
       <h1 className="text-2xl font-bold mb-4">My Vestings</h1>
       {schedules.length === 0 ? (
         <p className="text-gray-600">No vesting schedules found.</p>
