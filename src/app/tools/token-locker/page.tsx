@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, parseEther } from 'viem';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
@@ -36,6 +36,14 @@ export default function TokenLockerPage() {
     hash,
   });
   const publicClient = usePublicClient();
+
+  // Read fee amount from contract
+  const { data: feeAmount } = useReadContract({
+    address: process.env.NEXT_PUBLIC_TOKEN_LOCKER as `0x${string}`,
+    abi: tokenLockerAbi,
+    functionName: 'feeAmount',
+    query: { enabled: !!process.env.NEXT_PUBLIC_TOKEN_LOCKER },
+  });
   const [isApproving, setIsApproving] = useState(false);
   const [approvedForAmount, setApprovedForAmount] = useState(false);
   const [lastTxType, setLastTxType] = useState<'approve' | 'lock' | null>(null);
@@ -252,6 +260,8 @@ export default function TokenLockerPage() {
           amountInUnits,
           BigInt(lockUntil),
         ],
+        // Use dynamic fee from contract, fallback to 1 XPL
+        value: (feeAmount as bigint) ?? parseEther('1'),
       });
     } catch (error) {
       console.error('Error locking token:', error);
@@ -387,11 +397,21 @@ export default function TokenLockerPage() {
             {/* Right: Info Panel */}
             <div className="lg:col-span-4">
               <div className="card p-6 lg:sticky lg:top-24 space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Lock Information</h3>
+                
+                {/* Fee Information */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Locking Fee</h4>
+                  <p className="text-sm text-blue-700">
+                    A fee of {feeAmount ? formatUnits(feeAmount as bigint, 18) : '1'} XPL will be charged for each lock operation.
+                  </p>
+                </div>
+
                 <h3 className="text-lg font-semibold text-gray-900">Tips</h3>
                 <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
                   <li>Ensure your token supports `approve` for the locker.</li>
                   <li>Use a future date for `Lock Until`.</li>
-                  {/* Cliff removed for Token Locker */}
+                  <li>Make sure you have enough XPL for the locking fee.</li>
                 </ul>
               </div>
             </div>
