@@ -50,6 +50,7 @@ export default function MyVestingsPage() {
     }
     
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
     
     (async () => {
       const newSchedules: Array<{ id: bigint; s: Schedule }> = [];
@@ -58,17 +59,27 @@ export default function MyVestingsPage() {
         if (!isMounted) break;
         
         try {
-          const res = await (window as unknown as { wagmi?: { readContract?: (p: { address: string; abi: unknown; functionName: string; args: unknown[] }) => Promise<unknown> } }).wagmi?.readContract?.({
+          // Add timeout to prevent hanging
+          const promise = (window as unknown as { wagmi?: { readContract?: (p: { address: string; abi: unknown; functionName: string; args: unknown[] }) => Promise<unknown> } }).wagmi?.readContract?.({
             address: process.env.NEXT_PUBLIC_VESTING_FACTORY as string,
             abi: vestingAbi as unknown,
             functionName: 'schedules',
             args: [id as unknown as bigint],
           });
+          
+          const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Timeout')), 5000);
+          });
+          
+          const res = await Promise.race([promise, timeoutPromise]);
+          clearTimeout(timeoutId);
+          
           if (res && isMounted) {
             newSchedules.push({ id, s: res as Schedule });
           }
-        } catch {
-          // ignore
+        } catch (error) {
+          clearTimeout(timeoutId);
+          console.warn('Failed to fetch schedule:', id, error);
         }
       }
       
@@ -79,6 +90,7 @@ export default function MyVestingsPage() {
     
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
     };
   }, [scheduleIds]);
 
