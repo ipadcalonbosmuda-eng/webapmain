@@ -88,7 +88,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed top-16 left-0 z-50 w-64 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:fixed lg:top-16",
+        "fixed top-16 left-0 z-[1000] pointer-events-auto w-64 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:fixed lg:top-16",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
