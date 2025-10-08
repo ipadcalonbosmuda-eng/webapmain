@@ -405,7 +405,7 @@ export default function TokenLockerPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-900 mb-2">Locking Fee</h4>
                   <p className="text-sm text-blue-700">
-                    A fee of {feeAmount ? formatUnits(feeAmount as bigint, 18) : '1'} XPL will be charged for each lock operation.
+                    Fee {feeAmount ? formatUnits(feeAmount as bigint, 18) : '1'} XPL will be charged for each lock operation.
                   </p>
                 </div>
 
