@@ -22,6 +22,7 @@ export default function MyVestingsPage() {
   const { writeContract } = useWriteContract();
   const [decimalsMap, setDecimalsMap] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
 
   const { data: ids } = useReadContract({
     address: process.env.NEXT_PUBLIC_VESTING_FACTORY as `0x${string}`,
@@ -49,7 +50,6 @@ export default function MyVestingsPage() {
       return;
     }
     
-    let isMounted = true;
     let timeoutId: NodeJS.Timeout | undefined;
     
     (async () => {
@@ -68,7 +68,7 @@ export default function MyVestingsPage() {
           });
           
           const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('Timeout')), 5000);
+            timeoutId = setTimeout(() => reject(new Error('Timeout')), 3000);
           });
           
           const res = await Promise.race([promise, timeoutPromise]);
@@ -93,18 +93,15 @@ export default function MyVestingsPage() {
     })();
     
     return () => {
-      isMounted = false;
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
     };
-  }, [scheduleIds]);
+  }, [scheduleIds, isMounted]);
 
   // Helper to read decimals per token lazily
   useEffect(() => {
     if (schedules.length === 0) return;
-    
-    let isMounted = true;
     
     (async () => {
       const newDecimalsMap: Record<string, number> = {};
@@ -135,11 +132,14 @@ export default function MyVestingsPage() {
         setDecimalsMap((m) => ({ ...m, ...newDecimalsMap }));
       }
     })();
-    
+  }, [schedules.length, decimalsMap, isMounted]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      isMounted = false;
+      setIsMounted(false);
     };
-  }, [schedules.length, decimalsMap]); // Add decimalsMap to dependencies but with proper cleanup
+  }, []);
 
   const claim = async (id: bigint) => {
     try {

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { 
   LayoutDashboard,
@@ -52,7 +52,6 @@ const navigation: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
@@ -134,21 +133,21 @@ export function Sidebar() {
                           {item.children.map((child) => {
                             const isActive = pathname === child.href;
                             return (
-                              <button
+                              <Link
                                 key={child.name}
+                                href={child.href}
                                 className={cn(
-                                  'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors w-full text-left',
+                                  'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                                   isActive ? 'bg-[#00FF85] text-black' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                 )}
                                 onClick={() => {
                                   console.log('Clicking link:', child.href);
                                   setIsOpen(false);
-                                  router.push(child.href);
                                 }}
                               >
                                 <span className="mr-3 h-5 w-5" />
                                 {child.name}
-                              </button>
+                              </Link>
                             );
                           })}
                         </div>
@@ -161,10 +160,11 @@ export function Sidebar() {
                 const link = item as NavLink;
                 const isActive = pathname === link.href;
                 return (
-                  <button
+                  <Link
                     key={link.name}
+                    href={link.href}
                     className={cn(
-                      'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors w-full text-left',
+                      'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                       isActive
                         ? 'bg-[#00FF85] text-black'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -172,7 +172,6 @@ export function Sidebar() {
                     onClick={() => {
                       console.log('Clicking main link:', link.href);
                       setIsOpen(false);
-                      router.push(link.href);
                     }}
                   >
                     <link.icon
@@ -182,7 +181,7 @@ export function Sidebar() {
                       )}
                     />
                     {link.name}
-                  </button>
+                  </Link>
                 );
               })}
             </nav>
