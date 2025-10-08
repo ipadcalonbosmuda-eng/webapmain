@@ -9,7 +9,8 @@ import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { FileDrop } from '@/components/FileDrop';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
-import { explorerUrl, parseCSV, parseJSON, isValidAddress, formatUnits, parseEther } from '@/lib/utils';
+import { explorerUrl, parseCSV, parseJSON, isValidAddress } from '@/lib/utils';
+import { formatUnits, parseEther } from 'viem';
 import multiSendAbi from '@/lib/abis/multiSend.json';
 import { Plus, Trash2 } from 'lucide-react';
 
