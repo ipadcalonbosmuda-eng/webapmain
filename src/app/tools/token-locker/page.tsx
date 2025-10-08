@@ -13,7 +13,10 @@ import tokenLockerAbi from '@/lib/abis/tokenLocker.json';
 
 const tokenLockerSchema = z.object({
   tokenAddress: z.string().min(42, 'Invalid token address').max(42, 'Invalid token address'),
-  amount: z.string().min(1, 'Amount is required').refine((val) => !isNaN(Number(val)) && Number(val) > 0, 'Amount must be a positive number'),
+  amount: z.string().min(1, 'Amount is required').refine((val) => {
+    const num = Number(val);
+    return !isNaN(num) && num > 0 && val.trim() !== '';
+  }, 'Amount must be a positive number'),
   lockUntil: z.string().min(1, 'Lock date is required'),
 });
 
@@ -324,7 +327,6 @@ export default function TokenLockerPage() {
                     error={errors.amount?.message}
                     helperText={`Amount of tokens to lock (in token units).${tokenAddress ? ` Available: ${walletBalanceFormatted}${tokenSymbol ? ` ${tokenSymbol}` : ''}` : ''}`}
                     inputMode="decimal"
-                    pattern="^\\d*(?:\\.\\d*)?$"
                     {...register('amount')}
                     required
                   />
