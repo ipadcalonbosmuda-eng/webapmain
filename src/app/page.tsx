@@ -49,8 +49,7 @@ export default function HomePage() {
             Plasmatic Tools
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Professional Web3 tools for token creation, locking, vesting, and more on Plasma Mainnet Beta.
-            Built for developers, teams, and projects that need reliable blockchain infrastructure.
+            Tools for token creation, locking, vesting, and more on Plasma Mainnet Beta.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
