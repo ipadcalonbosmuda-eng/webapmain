@@ -109,6 +109,7 @@ export function Sidebar() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          console.log('Toggling section:', item.name);
                           toggleSection(item.name);
                         }}
                       >
@@ -139,8 +140,13 @@ export function Sidebar() {
                                   'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors',
                                   isActive ? 'bg-[#00FF85] text-black' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                 )}
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('Clicking link:', child.href);
                                   setIsOpen(false);
+                                  // Force navigation
+                                  window.location.href = child.href;
                                 }}
                               >
                                 <span className="mr-3 h-5 w-5" />
@@ -167,8 +173,13 @@ export function Sidebar() {
                         ? 'bg-[#00FF85] text-black'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     )}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Clicking main link:', link.href);
                       setIsOpen(false);
+                      // Force navigation
+                      window.location.href = link.href;
                     }}
                   >
                     <link.icon
