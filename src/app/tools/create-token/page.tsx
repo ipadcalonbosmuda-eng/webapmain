@@ -4,13 +4,13 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { RequireWallet } from '@/components/RequireWallet';
 import { FormField } from '@/components/FormField';
 import { ToastContainer, type ToastProps, type ToastData } from '@/components/Toast';
 import { explorerUrl } from '@/lib/utils';
 import tokenFactoryAbi from '@/lib/abis/tokenFactory.json';
-import { parseUnits } from 'viem';
+import { parseUnits, formatUnits, parseEther } from 'viem';
 
 const createTokenSchema = z.object({
   name: z.string().min(1, 'Token name is required'),
@@ -42,6 +42,14 @@ export default function CreateTokenPage() {
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({
     hash,
+  });
+
+  // Read fee amount from contract
+  const { data: feeAmount } = useReadContract({
+    address: process.env.NEXT_PUBLIC_TOKEN_FACTORY as `0x${string}`,
+    abi: tokenFactoryAbi,
+    functionName: 'feeAmount',
+    query: { enabled: !!process.env.NEXT_PUBLIC_TOKEN_FACTORY },
   });
 
 
@@ -90,6 +98,7 @@ export default function CreateTokenPage() {
         abi: tokenFactoryAbi,
         functionName: 'createToken',
         args: [data.name, data.symbol, totalSupplyWithDecimals, data.owner as `0x${string}`],
+        value: (feeAmount as bigint) ?? parseEther('1'), // Fee for token creation
       });
 
       {
@@ -227,6 +236,14 @@ export default function CreateTokenPage() {
             {/* Right: Preview/Guide */}
             <div className="lg:col-span-4">
               <div className="card p-6 lg:sticky lg:top-24 space-y-6">
+                {/* Fee Information */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Token Creation Fee</h4>
+                  <p className="text-sm text-blue-700">
+                    Fee {feeAmount ? formatUnits(feeAmount as bigint, 18) : '1'} XPL will be charged for token creation.
+                  </p>
+                </div>
+
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Preview</h3>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
@@ -246,6 +263,7 @@ export default function CreateTokenPage() {
                     <li>Symbol should be 2–6 characters; uppercase is recommended.</li>
                     <li>Total Supply is the initial number of tokens to mint.</li>
                     <li>Owner Address will become the token contract owner.</li>
+                    <li>Make sure you have enough XPL for the creation fee.</li>
                   </ul>
                 </div>
               </div>
